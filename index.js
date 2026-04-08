@@ -2442,7 +2442,7 @@ app.get('/api/leaderboard', async (req, res) => {
 app.listen(3000, () => console.log('Web API running on port 3000'));
 
 // ================= READY =================
-client.once('ready', () => {
+client.once('clientReady', () => {
   console.log(`Logged in as ${client.user.tag}`);
 });
 
