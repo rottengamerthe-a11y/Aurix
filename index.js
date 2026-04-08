@@ -1,6 +1,6 @@
 ﻿require('dotenv').config();
 
-const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, PermissionsBitField, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 const mongoose = require('mongoose');
 const express = require('express');
 
@@ -32,6 +32,7 @@ const userSchema = new mongoose.Schema({
   rank: { type: String, default: 'Bronze' },
   clan: { type: String, default: null },
   clanRole: { type: String, default: null },
+  clanPrivacy: { type: String, default: 'private' },
   clanInvites: { type: Array, default: [] },
   clanXp: { type: Number, default: 0 },
   clanLevel: { type: Number, default: 1 },
@@ -48,6 +49,13 @@ const userSchema = new mongoose.Schema({
 });
 
 const User = mongoose.model('User', userSchema);
+
+const guildConfigSchema = new mongoose.Schema({
+  guildId: { type: String, required: true, unique: true },
+  botChannelId: { type: String, default: null }
+});
+
+const GuildConfig = mongoose.model('GuildConfig', guildConfigSchema);
 
 async function getUser(id) {
   let user = await User.findOne({ userId: id });
@@ -67,11 +75,21 @@ async function getUser(id) {
   }
   if (!Array.isArray(user.clanInvites)) user.clanInvites = [];
   if (user.clanRole !== 'owner' && user.clanRole !== 'member') user.clanRole = user.clan ? 'member' : null;
+  if (user.clanPrivacy !== 'public' && user.clanPrivacy !== 'private') user.clanPrivacy = 'private';
   if (!Number.isInteger(user.lastVaultInterest) || user.lastVaultInterest < 0) {
     user.lastVaultInterest = Date.now();
   }
 
   return user;
+}
+
+async function getGuildConfig(guildId) {
+  let config = await GuildConfig.findOne({ guildId });
+  if (!config) {
+    config = await GuildConfig.create({ guildId });
+  }
+
+  return config;
 }
 
 // ================= CLIENT =================
@@ -85,6 +103,7 @@ const client = new Client({
 
 let battles = new Map();
 let pendingChallenges = new Map();
+let pendingClanInvites = new Map();
 let pendingClanWars = new Map();
 let activeClanWars = new Map();
 let activeBossBattles = new Map();
@@ -107,26 +126,26 @@ const RANKS = [
 ];
 
 const CLAN_LEVELS = [
-  { level: 1, reward: 'Clan unlocked. Member cap 10.', perks: { memberCap: 10, auraBonus: 0, xpBonus: 0, dailyBonus: 0, vaultBonus: 0 } },
-  { level: 2, reward: '+2% clan Aura gain.', perks: { memberCap: 10, auraBonus: 0.02, xpBonus: 0, dailyBonus: 0, vaultBonus: 0 } },
-  { level: 3, reward: '+5% clan XP gain.', perks: { memberCap: 10, auraBonus: 0.02, xpBonus: 0.05, dailyBonus: 0, vaultBonus: 0 } },
-  { level: 4, reward: '+0.25% clan vault interest.', perks: { memberCap: 10, auraBonus: 0.02, xpBonus: 0.05, dailyBonus: 0, vaultBonus: 0.0025 } },
-  { level: 5, reward: '+5% clan daily reward.', perks: { memberCap: 10, auraBonus: 0.02, xpBonus: 0.05, dailyBonus: 0.05, vaultBonus: 0.0025 } },
-  { level: 6, reward: 'Member cap increased to 12.', perks: { memberCap: 12, auraBonus: 0.02, xpBonus: 0.05, dailyBonus: 0.05, vaultBonus: 0.0025 } },
-  { level: 7, reward: '+4% total clan Aura gain.', perks: { memberCap: 12, auraBonus: 0.04, xpBonus: 0.05, dailyBonus: 0.05, vaultBonus: 0.0025 } },
-  { level: 8, reward: '+10% total clan XP gain.', perks: { memberCap: 12, auraBonus: 0.04, xpBonus: 0.1, dailyBonus: 0.05, vaultBonus: 0.0025 } },
-  { level: 9, reward: '+0.5% total clan vault interest.', perks: { memberCap: 12, auraBonus: 0.04, xpBonus: 0.1, dailyBonus: 0.05, vaultBonus: 0.005 } },
-  { level: 10, reward: '+10% total clan daily reward.', perks: { memberCap: 12, auraBonus: 0.04, xpBonus: 0.1, dailyBonus: 0.1, vaultBonus: 0.005 } },
-  { level: 11, reward: 'Member cap increased to 14.', perks: { memberCap: 14, auraBonus: 0.04, xpBonus: 0.1, dailyBonus: 0.1, vaultBonus: 0.005 } },
-  { level: 12, reward: '+6% total clan Aura gain.', perks: { memberCap: 14, auraBonus: 0.06, xpBonus: 0.1, dailyBonus: 0.1, vaultBonus: 0.005 } },
-  { level: 13, reward: '+15% total clan XP gain.', perks: { memberCap: 14, auraBonus: 0.06, xpBonus: 0.15, dailyBonus: 0.1, vaultBonus: 0.005 } },
-  { level: 14, reward: '+0.75% total clan vault interest.', perks: { memberCap: 14, auraBonus: 0.06, xpBonus: 0.15, dailyBonus: 0.1, vaultBonus: 0.0075 } },
-  { level: 15, reward: '+15% total clan daily reward.', perks: { memberCap: 14, auraBonus: 0.06, xpBonus: 0.15, dailyBonus: 0.15, vaultBonus: 0.0075 } },
-  { level: 16, reward: 'Member cap increased to 16.', perks: { memberCap: 16, auraBonus: 0.06, xpBonus: 0.15, dailyBonus: 0.15, vaultBonus: 0.0075 } },
-  { level: 17, reward: '+8% total clan Aura gain.', perks: { memberCap: 16, auraBonus: 0.08, xpBonus: 0.15, dailyBonus: 0.15, vaultBonus: 0.0075 } },
-  { level: 18, reward: '+20% total clan XP gain.', perks: { memberCap: 16, auraBonus: 0.08, xpBonus: 0.2, dailyBonus: 0.15, vaultBonus: 0.0075 } },
-  { level: 19, reward: '+1% total clan vault interest.', perks: { memberCap: 16, auraBonus: 0.08, xpBonus: 0.2, dailyBonus: 0.15, vaultBonus: 0.01 } },
-  { level: 20, reward: 'Final clan rank: member cap 20, +10% Aura, +25% XP, +20% Daily, +1.25% vault interest.', perks: { memberCap: 20, auraBonus: 0.1, xpBonus: 0.25, dailyBonus: 0.2, vaultBonus: 0.0125 } }
+  { level: 1, reward: 'Clan unlocked. Member cap 50.', perks: { memberCap: 50, auraBonus: 0, xpBonus: 0, dailyBonus: 0, vaultBonus: 0 } },
+  { level: 2, reward: '+2% clan Aura gain.', perks: { memberCap: 50, auraBonus: 0.02, xpBonus: 0, dailyBonus: 0, vaultBonus: 0 } },
+  { level: 3, reward: '+5% clan XP gain.', perks: { memberCap: 50, auraBonus: 0.02, xpBonus: 0.05, dailyBonus: 0, vaultBonus: 0 } },
+  { level: 4, reward: '+0.25% clan vault interest.', perks: { memberCap: 50, auraBonus: 0.02, xpBonus: 0.05, dailyBonus: 0, vaultBonus: 0.0025 } },
+  { level: 5, reward: '+5% clan daily reward.', perks: { memberCap: 50, auraBonus: 0.02, xpBonus: 0.05, dailyBonus: 0.05, vaultBonus: 0.0025 } },
+  { level: 6, reward: '+2% clan Aura gain.', perks: { memberCap: 50, auraBonus: 0.02, xpBonus: 0.05, dailyBonus: 0.05, vaultBonus: 0.0025 } },
+  { level: 7, reward: '+4% total clan Aura gain.', perks: { memberCap: 50, auraBonus: 0.04, xpBonus: 0.05, dailyBonus: 0.05, vaultBonus: 0.0025 } },
+  { level: 8, reward: '+10% total clan XP gain.', perks: { memberCap: 50, auraBonus: 0.04, xpBonus: 0.1, dailyBonus: 0.05, vaultBonus: 0.0025 } },
+  { level: 9, reward: '+0.5% total clan vault interest.', perks: { memberCap: 50, auraBonus: 0.04, xpBonus: 0.1, dailyBonus: 0.05, vaultBonus: 0.005 } },
+  { level: 10, reward: '+10% total clan daily reward.', perks: { memberCap: 50, auraBonus: 0.04, xpBonus: 0.1, dailyBonus: 0.1, vaultBonus: 0.005 } },
+  { level: 11, reward: '+4% total clan Aura gain.', perks: { memberCap: 50, auraBonus: 0.04, xpBonus: 0.1, dailyBonus: 0.1, vaultBonus: 0.005 } },
+  { level: 12, reward: '+6% total clan Aura gain.', perks: { memberCap: 50, auraBonus: 0.06, xpBonus: 0.1, dailyBonus: 0.1, vaultBonus: 0.005 } },
+  { level: 13, reward: '+15% total clan XP gain.', perks: { memberCap: 50, auraBonus: 0.06, xpBonus: 0.15, dailyBonus: 0.1, vaultBonus: 0.005 } },
+  { level: 14, reward: '+0.75% total clan vault interest.', perks: { memberCap: 50, auraBonus: 0.06, xpBonus: 0.15, dailyBonus: 0.1, vaultBonus: 0.0075 } },
+  { level: 15, reward: '+15% total clan daily reward.', perks: { memberCap: 50, auraBonus: 0.06, xpBonus: 0.15, dailyBonus: 0.15, vaultBonus: 0.0075 } },
+  { level: 16, reward: '+6% total clan Aura gain.', perks: { memberCap: 50, auraBonus: 0.06, xpBonus: 0.15, dailyBonus: 0.15, vaultBonus: 0.0075 } },
+  { level: 17, reward: '+8% total clan Aura gain.', perks: { memberCap: 50, auraBonus: 0.08, xpBonus: 0.15, dailyBonus: 0.15, vaultBonus: 0.0075 } },
+  { level: 18, reward: '+20% total clan XP gain.', perks: { memberCap: 50, auraBonus: 0.08, xpBonus: 0.2, dailyBonus: 0.15, vaultBonus: 0.0075 } },
+  { level: 19, reward: '+1% total clan vault interest.', perks: { memberCap: 50, auraBonus: 0.08, xpBonus: 0.2, dailyBonus: 0.15, vaultBonus: 0.01 } },
+  { level: 20, reward: 'Final clan rank: member cap 50, +10% Aura, +25% XP, +20% Daily, +1.25% vault interest.', perks: { memberCap: 50, auraBonus: 0.1, xpBonus: 0.25, dailyBonus: 0.2, vaultBonus: 0.0125 } }
 ];
 
 const BOOST_LABELS = {
@@ -243,6 +262,7 @@ const BOSS_TEMPLATES = [
 
 const COMMAND_INFO = [
   { name: '!help', description: 'Shows all available commands and what they do.' },
+  { name: '!setup [#channel]', description: 'Admins set the only channel this bot will respond in. Defaults to the current channel.' },
   { name: '!spin', description: 'Spin the slot machine for Aura and XP with a cooldown.' },
   { name: '!coinflip <heads/tails> <amount>', description: 'Flip a coin and win Aura and XP if your guess is correct.' },
   { name: '!pvp @user', description: 'Challenge another player to a PvP fight.' },
@@ -265,6 +285,8 @@ const COMMAND_INFO = [
   { name: '!clan join <name>', description: 'Joins an existing clan if you have an invite.' },
   { name: '!clan accept <name>', description: 'Accepts a pending clan invite.' },
   { name: '!clan decline <name>', description: 'Declines a pending clan invite.' },
+  { name: '!clan rename <new name>', description: 'Clan owner changes the clan name when there are no active wars or raids.' },
+  { name: '!clan privacy <public|private>', description: 'Clan owner changes whether anyone can join or only invited users can join.' },
   { name: '!clan leave', description: 'Leaves your current clan.' },
   { name: '!clan transfer @user', description: 'Transfers clan ownership to another clan member.' },
   { name: '!clan kick @user', description: 'Clan owner removes a member from the clan.' },
@@ -684,6 +706,257 @@ function buildBattleRow(disabled = false) {
   );
 }
 
+function encodeClanToken(name) {
+  return encodeURIComponent(name);
+}
+
+function decodeClanToken(token) {
+  return decodeURIComponent(token);
+}
+
+function buildClanInviteRow(clanName, targetId, disabled = false) {
+  const clanToken = encodeClanToken(clanName);
+
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`claninvite_accept:${clanToken}:${targetId}`)
+      .setLabel('Accept Invite')
+      .setStyle(ButtonStyle.Success)
+      .setDisabled(disabled),
+    new ButtonBuilder()
+      .setCustomId(`claninvite_decline:${clanToken}:${targetId}`)
+      .setLabel('Decline Invite')
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(disabled)
+  );
+}
+
+function buildClanJoinRow(clanName, disabled = false) {
+  const clanToken = encodeClanToken(clanName);
+
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`clanjoin_public:${clanToken}`)
+      .setLabel('Join Clan')
+      .setStyle(ButtonStyle.Primary)
+      .setDisabled(disabled)
+  );
+}
+
+function buildClanPrivacyRow(clanName, ownerId, currentPrivacy) {
+  const clanToken = encodeClanToken(clanName);
+
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`clanprivacy_public:${clanToken}:${ownerId}`)
+      .setLabel('Make Public')
+      .setStyle(ButtonStyle.Success)
+      .setDisabled(currentPrivacy === 'public'),
+    new ButtonBuilder()
+      .setCustomId(`clanprivacy_private:${clanToken}:${ownerId}`)
+      .setLabel('Make Private')
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(currentPrivacy === 'private')
+  );
+}
+
+function buildClanLeaveRow(clanName, disabled = false) {
+  const clanToken = encodeClanToken(clanName);
+
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`clanleave:${clanToken}`)
+      .setLabel('Leave Clan')
+      .setStyle(ButtonStyle.Danger)
+      .setDisabled(disabled)
+  );
+}
+
+function getHelpCategories() {
+  return [
+    {
+      key: 'core',
+      name: 'Core',
+      summary: 'Basic profile, economy, and utility commands.',
+      commands: COMMAND_INFO.filter(command => ['!help', '!setup [#channel]', '!spin', '!coinflip <heads/tails> <amount>', '!bal', '!rank', '!level', '!leaderboard', '!inv', '!stats', '!deposit <amount|all>', '!daily', '!vaultinterest'].includes(command.name))
+    },
+    {
+      key: 'skills',
+      name: 'Skills & Shop',
+      summary: 'Skill upgrades, specializations, shopping, and items.',
+      commands: COMMAND_INFO.filter(command => command.name.startsWith('!skill') || ['!shop', '!buy <item>', '!use <item>', '!open'].includes(command.name))
+    },
+    {
+      key: 'clans',
+      name: 'Clans',
+      summary: 'Clan creation, invites, settings, war, and info.',
+      commands: COMMAND_INFO.filter(command => command.name.startsWith('!clan'))
+    },
+    {
+      key: 'bosses',
+      name: 'Bosses',
+      summary: 'Solo boss fights and clan raids.',
+      commands: COMMAND_INFO.filter(command => command.name.startsWith('!boss'))
+    }
+  ];
+}
+
+function buildHelpRow() {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('help_core').setLabel('Core').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId('help_skills').setLabel('Skills').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('help_clans').setLabel('Clans').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('help_bosses').setLabel('Bosses').setStyle(ButtonStyle.Secondary)
+  );
+}
+
+function buildHelpSummaryEmbed(message) {
+  const categories = getHelpCategories();
+
+  return createEmbed(message, 'Help Center', EMBED_COLORS.info)
+    .setDescription('Use `!help <section>` for a full list.\nSections: `core`, `skills`, `clans`, `bosses`.')
+    .addFields(categories.map(category => field(category.name, `${category.summary}\nUse \`!help ${category.key}\``, false)));
+}
+
+function buildHelpSectionEmbed(message, section) {
+  return createEmbed(message, `${section.name} Help`, EMBED_COLORS.info)
+    .setDescription(section.summary)
+    .addFields(
+      field(
+        'Commands',
+        section.commands.map(command => `\`${command.name}\`\n${command.description}`).join('\n\n') || 'No commands available.',
+        false
+      )
+    );
+}
+
+function buildShopRow() {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('shop_buy:crate').setLabel('Buy Crate').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId('shop_buy:auraboost').setLabel('Buy Aura').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('shop_buy:dailyboost').setLabel('Buy Daily').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('shop_buy:luckboost').setLabel('Buy Luck').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('shop_buy:xpboost').setLabel('Buy XP').setStyle(ButtonStyle.Secondary)
+  );
+}
+
+function buildInventoryRow(user) {
+  const buttons = [];
+
+  if (hasItem(user, 'Crate')) {
+    buttons.push(new ButtonBuilder().setCustomId('item_open_crate').setLabel('Open Crate').setStyle(ButtonStyle.Primary));
+  }
+
+  for (const [itemKey, item] of Object.entries(SHOP_ITEMS)) {
+    if (!item.boostKey) continue;
+    if (!hasItem(user, item.name)) continue;
+
+    buttons.push(
+      new ButtonBuilder()
+        .setCustomId(`item_use:${itemKey}`)
+        .setLabel(`Use ${item.name}`)
+        .setStyle(ButtonStyle.Success)
+        .setDisabled(isBoostActive(user, item.boostKey))
+    );
+  }
+
+  if (buttons.length === 0) return null;
+  return new ActionRowBuilder().addComponents(buttons.slice(0, 5));
+}
+
+function buildSkillUpgradeRow() {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('skill_upgrade:dmg').setLabel('Upgrade Dmg').setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId('skill_upgrade:defense').setLabel('Upgrade Defense').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId('skill_upgrade:luck').setLabel('Upgrade Luck').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId('skill_paths').setLabel('View Paths').setStyle(ButtonStyle.Secondary)
+  );
+}
+
+function buildSkillPathRow(branch) {
+  const paths = Object.keys(SKILL_SPECIALIZATIONS[branch] || {});
+
+  return new ActionRowBuilder().addComponents(
+    paths.map(path =>
+      new ButtonBuilder()
+        .setCustomId(`skill_specialize:${branch}:${path}`)
+        .setLabel(`${branch}:${path}`)
+        .setStyle(ButtonStyle.Secondary)
+    )
+  );
+}
+
+function buildBossStartRow() {
+  return new ActionRowBuilder().addComponents(
+    BOSS_TEMPLATES.map(boss =>
+      new ButtonBuilder()
+        .setCustomId(`boss_start:${boss.key}`)
+        .setLabel(`Start ${boss.key}`)
+        .setStyle(ButtonStyle.Danger)
+    )
+  );
+}
+
+function buildSoloBossRow(disabled = false) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('boss_attack').setLabel('Attack').setStyle(ButtonStyle.Danger).setDisabled(disabled),
+    new ButtonBuilder().setCustomId('boss_heal').setLabel('Heal').setStyle(ButtonStyle.Success).setDisabled(disabled),
+    new ButtonBuilder().setCustomId('boss_status').setLabel('Status').setStyle(ButtonStyle.Primary).setDisabled(disabled)
+  );
+}
+
+function buildClanBossRow(disabled = false) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('boss_clan_join').setLabel('Join Raid').setStyle(ButtonStyle.Primary).setDisabled(disabled),
+    new ButtonBuilder().setCustomId('boss_clan_attack').setLabel('Attack').setStyle(ButtonStyle.Danger).setDisabled(disabled),
+    new ButtonBuilder().setCustomId('boss_clan_heal').setLabel('Heal').setStyle(ButtonStyle.Success).setDisabled(disabled),
+    new ButtonBuilder().setCustomId('boss_clan_status').setLabel('Status').setStyle(ButtonStyle.Secondary).setDisabled(disabled)
+  );
+}
+
+function buildEconomyRow(user) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('econ_daily').setLabel('Claim Daily').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId('econ_deposit_all').setLabel('Deposit All').setStyle(ButtonStyle.Primary).setDisabled(user.aura <= 0),
+    new ButtonBuilder().setCustomId('econ_vaultinterest').setLabel('Vault Info').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('econ_bal').setLabel('Refresh Balance').setStyle(ButtonStyle.Secondary)
+  );
+}
+
+function buildEconomyModalRow() {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('econ_coinflip_modal').setLabel('Coinflip').setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId('econ_deposit_modal').setLabel('Custom Deposit').setStyle(ButtonStyle.Primary)
+  );
+}
+
+function buildEconomyRows(user) {
+  return [buildEconomyRow(user), buildEconomyModalRow()];
+}
+
+function buildClanWarRow(user, war) {
+  const isOwner = user.userId === war.attackerOwnerId || user.userId === war.defenderOwnerId;
+
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('clanwar_join').setLabel('Join Roster').setStyle(ButtonStyle.Primary).setDisabled(war.started),
+    new ButtonBuilder().setCustomId('clanwar_leave').setLabel('Leave Roster').setStyle(ButtonStyle.Secondary).setDisabled(war.started),
+    new ButtonBuilder().setCustomId('clanwar_status').setLabel('War Status').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('clanwar_start').setLabel('Start War').setStyle(ButtonStyle.Danger).setDisabled(war.started || !isOwner)
+  );
+}
+
+function buildClanCreateRow() {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('clan_create_modal').setLabel('Create Clan').setStyle(ButtonStyle.Success)
+  );
+}
+
+function buildClanRenameRow() {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('clan_rename_modal').setLabel('Rename Clan').setStyle(ButtonStyle.Primary)
+  );
+}
+
 function battleMaxHp(user) {
   const guardianBonus = getSpecialization(user, 'defense') === 'guardian' ? 1500 : 0;
   return 10000 + user.skills.defense * 250 + guardianBonus;
@@ -734,6 +1007,10 @@ async function syncClanProgress(clanName, clanLevel, clanXp) {
   );
 }
 
+async function syncClanSettings(clanName, updates) {
+  await User.updateMany({ clan: clanName }, { $set: updates });
+}
+
 function normalizeClanName(name) {
   return name.trim().replace(/\s+/g, ' ');
 }
@@ -759,6 +1036,7 @@ async function getClanSummary(clanName) {
 
   return {
     name: clanName,
+    privacy: members[0].clanPrivacy || 'private',
     members,
     totalAura,
     totalWins
@@ -788,6 +1066,16 @@ function getActiveClanWar(clanName) {
     }
   }
   return null;
+}
+
+function hasPendingClanWar(clanName) {
+  for (const war of pendingClanWars.values()) {
+    if (war.attackerClan === clanName || war.defenderClan === clanName) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function memberWarPower(member) {
@@ -961,6 +1249,35 @@ async function rewardClanBossRaid(raid) {
 // ================= COMMAND HANDLER =================
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
+  if (!message.guild) return;
+
+  const isSetupCommand = message.content.toLowerCase().startsWith('!setup');
+  const guildConfig = await getGuildConfig(message.guild.id);
+
+  if (isSetupCommand) {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
+      return message.reply({ embeds: [warningEmbed(message, 'Missing Permission', 'You need the `Manage Server` permission to set the bot channel.')] });
+    }
+
+    const selectedChannel = message.mentions.channels.first() || message.channel;
+    if (!selectedChannel.isTextBased() || !selectedChannel.permissionsFor(message.guild.members.me)?.has(PermissionsBitField.Flags.SendMessages)) {
+      return message.reply({ embeds: [warningEmbed(message, 'Invalid Channel', 'Choose a text channel where I have permission to send messages.')] });
+    }
+
+    guildConfig.botChannelId = selectedChannel.id;
+    await guildConfig.save();
+
+    return message.reply({
+      embeds: [
+        createEmbed(message, 'Setup Complete', EMBED_COLORS.success)
+          .setDescription(`Bot commands are now locked to <#${selectedChannel.id}>.\nUse \`!setup #channel\` again any time to move them.`)
+      ]
+    });
+  }
+
+  if (guildConfig.botChannelId && message.channelId !== guildConfig.botChannelId) {
+    return;
+  }
 
   const user = await getUser(message.author.id);
   removeExpiredBoosts(user);
@@ -969,37 +1286,20 @@ client.on('messageCreate', async (message) => {
     await user.save();
   }
 
-  if (message.content === '!help') {
-    const categories = [
-      {
-        name: 'Core',
-        commands: COMMAND_INFO.filter(command => ['!help', '!spin', '!coinflip <heads/tails> <amount>', '!bal', '!rank', '!level', '!leaderboard', '!inv', '!stats'].includes(command.name))
-      },
-      {
-        name: 'Skills & Shop',
-        commands: COMMAND_INFO.filter(command => command.name.startsWith('!skill') || ['!shop', '!buy <item>', '!use <item>', '!open'].includes(command.name))
-      },
-      {
-        name: 'Clans',
-        commands: COMMAND_INFO.filter(command => command.name.startsWith('!clan'))
-      },
-      {
-        name: 'Bosses',
-        commands: COMMAND_INFO.filter(command => command.name.startsWith('!boss'))
-      }
-    ];
+  if (message.content.startsWith('!help')) {
+    const helpArg = (message.content.split(' ')[1] || '').toLowerCase();
+    const categories = getHelpCategories();
+    const selectedSection = categories.find(category => category.key === helpArg);
 
-    const embed = createEmbed(message, 'Command Guide', EMBED_COLORS.info)
-      .setDescription('Everything available in your bot right now.')
-      .addFields(
-        categories.map(category => field(
-          category.name,
-          category.commands.map(command => `\`${command.name}\`\n${command.description}`).join('\n\n'),
-          false
-        ))
-      );
+    if (!helpArg) {
+      return message.reply({ embeds: [buildHelpSummaryEmbed(message)], components: [buildHelpRow()] });
+    }
 
-    return message.reply({ embeds: [embed] });
+    if (!selectedSection) {
+      return message.reply({ embeds: [warningEmbed(message, 'Unknown Help Section', 'Use `!help`, `!help core`, `!help skills`, `!help clans`, or `!help bosses`.')] });
+    }
+
+    return message.reply({ embeds: [buildHelpSectionEmbed(message, selectedSection)], components: [buildHelpRow()] });
   }
 
   if (message.content === '!spin') {
@@ -1115,7 +1415,7 @@ client.on('messageCreate', async (message) => {
       embed.setDescription(`Vault interest applied: +${vaultInterest.applied} Aura`);
     }
 
-    return message.reply({ embeds: [embed] });
+    return message.reply({ embeds: [embed], components: buildEconomyRows(user) });
   }
 
   if (message.content === '!rank') {
@@ -1153,7 +1453,7 @@ client.on('messageCreate', async (message) => {
         field('Luck', `${user.skills.luck} (${getSpecialization(user, 'luck') || 'no path'})`),
         field('Upgrade Costs', `dmg ${nextSkillCost(user, 'dmg')} • defense ${nextSkillCost(user, 'defense')} • luck ${nextSkillCost(user, 'luck')}`, false)
       );
-    return message.reply({ embeds: [embed] });
+    return message.reply({ embeds: [embed], components: [buildSkillUpgradeRow()] });
   }
 
   if (message.content.startsWith('!skill')) {
@@ -1162,7 +1462,10 @@ client.on('messageCreate', async (message) => {
     const skillName = (args[2] || '').toLowerCase();
 
     if (action === 'paths') {
-      return message.reply({ embeds: [infoEmbed(message, 'Skill Paths', `Skill specializations unlock at branch level 5.\n${specializationSummary()}`)] });
+      return message.reply({
+        embeds: [infoEmbed(message, 'Skill Paths', `Skill specializations unlock at branch level 5.\n${specializationSummary()}`)],
+        components: [buildSkillPathRow('dmg'), buildSkillPathRow('defense'), buildSkillPathRow('luck')]
+      });
     }
 
     if (action === 'specialize') {
@@ -1183,7 +1486,10 @@ client.on('messageCreate', async (message) => {
       user.specializations[skillName] = pathName;
       user.markModified('specializations');
       await user.save();
-      return message.reply({ embeds: [createEmbed(message, 'Specialization Chosen', EMBED_COLORS.success).setDescription(`Specialized **${skillName}** into **${pathName}**.\n${SKILL_SPECIALIZATIONS[skillName][pathName]}`)] });
+      return message.reply({
+        embeds: [createEmbed(message, 'Specialization Chosen', EMBED_COLORS.success).setDescription(`Specialized **${skillName}** into **${pathName}**.\n${SKILL_SPECIALIZATIONS[skillName][pathName]}`)],
+        components: [buildSkillUpgradeRow()]
+      });
     }
 
     if (action !== 'upgrade' || !['dmg', 'defense', 'luck'].includes(skillName)) {
@@ -1199,7 +1505,10 @@ client.on('messageCreate', async (message) => {
     user.skills[skillName] += 1;
     user.markModified('skills');
     await user.save();
-    return message.reply({ embeds: [createEmbed(message, 'Skill Upgraded', EMBED_COLORS.success).setDescription(`Upgraded **${skillName}** to **${user.skills[skillName]}**.`).addFields(field('Tree Summary', skillTreeSummary(user), false))] });
+    return message.reply({
+      embeds: [createEmbed(message, 'Skill Upgraded', EMBED_COLORS.success).setDescription(`Upgraded **${skillName}** to **${user.skills[skillName]}**.`).addFields(field('Tree Summary', skillTreeSummary(user), false))],
+      components: [buildSkillUpgradeRow()]
+    });
   }
 
   if (message.content.startsWith('!deposit')) {
@@ -1227,7 +1536,7 @@ client.on('messageCreate', async (message) => {
         field('Vault', user.vault),
         field('Base Interest', `${Math.round(VAULT_INTEREST_RATE * 100)}% every 24h`)
       );
-    return message.reply({ embeds: [embed] });
+    return message.reply({ embeds: [embed], components: buildEconomyRows(user) });
   }
 
   if (message.content === '!daily') {
@@ -1249,7 +1558,7 @@ client.on('messageCreate', async (message) => {
         field('Clan XP', `+${clanXpResult.gained || 0}`),
         field('Progress', `${levelProgress(user)}${user.clan ? `\n${clanLevelProgress(user)}` : ''}`, false)
       );
-    return message.reply({ embeds: [embed] });
+    return message.reply({ embeds: [embed], components: buildEconomyRows(user) });
   }
 
   if (message.content === '!vaultinterest') {
@@ -1263,7 +1572,7 @@ client.on('messageCreate', async (message) => {
         field('Rate', `${effectiveRate}% every 24h`),
         field('Next Payout', formatDuration(nextIn))
       );
-    return message.reply({ embeds: [embed] });
+    return message.reply({ embeds: [embed], components: buildEconomyRows(user) });
   }
 
   if (message.content === '!shop') {
@@ -1275,7 +1584,7 @@ client.on('messageCreate', async (message) => {
         )
       );
 
-    return message.reply({ embeds: [embed] });
+    return message.reply({ embeds: [embed], components: [buildShopRow()] });
   }
 
   if (message.content.startsWith('!buy')) {
@@ -1371,7 +1680,7 @@ client.on('messageCreate', async (message) => {
             )
           )
         );
-      return message.reply({ embeds: [embed] });
+      return message.reply({ embeds: [embed], components: [buildBossStartRow()] });
     }
 
     if (subcommand === 'start') {
@@ -1400,7 +1709,7 @@ client.on('messageCreate', async (message) => {
           field('Rewards', `${boss.aura} Aura • ${boss.xp} XP • ${boss.clanXp} Clan XP`, false),
           field('Perk', boss.perk.label, false)
         );
-      return message.reply({ embeds: [embed] });
+      return message.reply({ embeds: [embed], components: [buildSoloBossRow()] });
     }
 
     if (subcommand === 'attack') {
@@ -1427,7 +1736,7 @@ client.on('messageCreate', async (message) => {
             field('Clan XP', `+${clanXpResult.gained || 0}`),
             field('Perk', perkGranted ? state.boss.perk.label : `${state.boss.perk.label} already active`, false)
           );
-        return message.reply({ embeds: [embed] });
+        return message.reply({ embeds: [embed], components: [buildBossStartRow()] });
       }
 
       const counter = bossCounterDamage(user, state.boss);
@@ -1438,7 +1747,7 @@ client.on('messageCreate', async (message) => {
         const embed = createEmbed(message, `Defeat: ${state.boss.name}`, EMBED_COLORS.danger)
           .setDescription(`The boss finished you with ${counter.dodged ? 'a missed counter' : `${counter.damage} damage`}.`)
           .addFields(field('Try Again', `Use \`!boss start ${state.boss.key}\``));
-        return message.reply({ embeds: [embed] });
+        return message.reply({ embeds: [embed], components: [buildBossStartRow()] });
       }
 
       const embed = createEmbed(message, `Boss Turn: ${state.boss.name}`, EMBED_COLORS.danger)
@@ -1448,7 +1757,7 @@ client.on('messageCreate', async (message) => {
           field('Your HP', `${Math.max(state.playerHp, 0)}/${state.maxPlayerHp} ${bar(Math.max(state.playerHp, 0), state.maxPlayerHp)}`, false),
           field('Heals Left', state.healsLeft)
         );
-      return message.reply({ embeds: [embed] });
+      return message.reply({ embeds: [embed], components: [buildSoloBossRow()] });
     }
 
     if (subcommand === 'heal') {
@@ -1468,7 +1777,7 @@ client.on('messageCreate', async (message) => {
         activeBossBattles.delete(user.userId);
         const embed = createEmbed(message, `Defeat: ${state.boss.name}`, EMBED_COLORS.danger)
           .setDescription(`You healed for ${healed}, but the boss ended the fight ${counter.dodged ? 'without landing the counter cleanly' : `with ${counter.damage} damage`}.`);
-        return message.reply({ embeds: [embed] });
+        return message.reply({ embeds: [embed], components: [buildBossStartRow()] });
       }
 
       const embed = createEmbed(message, `Boss Heal: ${state.boss.name}`, EMBED_COLORS.success)
@@ -1478,7 +1787,7 @@ client.on('messageCreate', async (message) => {
           field('Your HP', `${Math.max(state.playerHp, 0)}/${state.maxPlayerHp} ${bar(Math.max(state.playerHp, 0), state.maxPlayerHp)}`, false),
           field('Heals Left', state.healsLeft)
         );
-      return message.reply({ embeds: [embed] });
+      return message.reply({ embeds: [embed], components: [buildSoloBossRow()] });
     }
 
     if (subcommand === 'status') {
@@ -1491,7 +1800,7 @@ client.on('messageCreate', async (message) => {
           field('Heals Left', state.healsLeft),
           field('Reward Perk', state.boss.perk.label)
         );
-      return message.reply({ embeds: [embed] });
+      return message.reply({ embeds: [embed], components: [buildSoloBossRow()] });
     }
 
     if (subcommand === 'clan') {
@@ -1531,7 +1840,7 @@ client.on('messageCreate', async (message) => {
             field('Boss HP', boss.clanHp),
             field('Join', 'Use `!boss clan join`', false)
           );
-        return message.reply({ embeds: [embed] });
+        return message.reply({ embeds: [embed], components: [buildClanBossRow()] });
       }
 
       if (action === 'join') {
@@ -1555,7 +1864,7 @@ client.on('messageCreate', async (message) => {
             field('Heals Left', raid.healsLeft[user.userId]),
             field('Roster Size', raid.participants.length)
           );
-        return message.reply({ embeds: [embed] });
+        return message.reply({ embeds: [embed], components: [buildClanBossRow()] });
       }
 
       if (action === 'status') {
@@ -1572,7 +1881,7 @@ client.on('messageCreate', async (message) => {
             field('Top Logs', raid.logs.slice(-4).join('\n') || 'No logs yet.', false),
             field('Roster', roster, false)
           );
-        return message.reply({ embeds: [embed] });
+        return message.reply({ embeds: [embed], components: [buildClanBossRow()] });
       }
 
       if (action === 'attack') {
@@ -1598,7 +1907,7 @@ client.on('messageCreate', async (message) => {
               field('Clan XP', `+${rewards.clanXpResult.gained || 0}`),
               field('Rewards', rewards.rewardLines.join('\n'), false)
             );
-          return message.reply({ embeds: [embed] });
+          return message.reply({ embeds: [embed], components: [buildBossStartRow()] });
         }
 
         const counter = bossCounterDamage(user, raid.boss);
@@ -1610,7 +1919,7 @@ client.on('messageCreate', async (message) => {
           activeClanBossRaids.delete(raid.clanName);
           const embed = createEmbed(message, `Raid Failed: ${raid.boss.name}`, EMBED_COLORS.danger)
             .setDescription(`The full **${raid.clanName}** roster was defeated.`);
-          return message.reply({ embeds: [embed] });
+          return message.reply({ embeds: [embed], components: [buildBossStartRow()] });
         }
 
         const embed = createEmbed(message, `Raid Turn: ${raid.boss.name}`, EMBED_COLORS.danger)
@@ -1620,7 +1929,7 @@ client.on('messageCreate', async (message) => {
             field('Your HP', `${Math.max(raid.playerHp[user.userId], 0)}/${raid.playerMaxHp[user.userId]}`),
             field('Roster Alive', raid.participants.filter(id => (raid.playerHp[id] || 0) > 0).length)
           );
-        return message.reply({ embeds: [embed] });
+        return message.reply({ embeds: [embed], components: [buildClanBossRow()] });
       }
 
       if (action === 'heal') {
@@ -1646,7 +1955,7 @@ client.on('messageCreate', async (message) => {
           activeClanBossRaids.delete(raid.clanName);
           const embed = createEmbed(message, `Raid Failed: ${raid.boss.name}`, EMBED_COLORS.danger)
             .setDescription(`You healed for ${healed}, but the raid still collapsed.`);
-          return message.reply({ embeds: [embed] });
+          return message.reply({ embeds: [embed], components: [buildBossStartRow()] });
         }
 
         const embed = createEmbed(message, `Raid Heal: ${raid.boss.name}`, EMBED_COLORS.success)
@@ -1656,7 +1965,7 @@ client.on('messageCreate', async (message) => {
             field('Your HP', `${Math.max(raid.playerHp[user.userId], 0)}/${raid.playerMaxHp[user.userId]}`),
             field('Heals Left', raid.healsLeft[user.userId])
           );
-        return message.reply({ embeds: [embed] });
+        return message.reply({ embeds: [embed], components: [buildClanBossRow()] });
       }
 
       return message.reply({ embeds: [infoEmbed(message, 'Clan Boss Commands', 'Use `!boss clan start <boss>`, `!boss clan join`, `!boss clan attack`, `!boss clan heal`, or `!boss clan status`.')] });
@@ -1670,7 +1979,10 @@ client.on('messageCreate', async (message) => {
     const subcommand = (args[0] || '').toLowerCase();
 
     if (!subcommand) {
-      return message.reply({ embeds: [infoEmbed(message, 'Clan Commands', 'Use `!clan create <name>`, `!clan invite @user`, `!clan join <name>`, `!clan accept <name>`, `!clan decline <name>`, `!clan leave`, `!clan transfer @user`, `!clan kick @user`, `!clan war <name>`, `!clan info [name]`, or `!clan top`.')] });
+      return message.reply({
+        embeds: [infoEmbed(message, 'Clan Commands', 'Use `!clan create <name>`, `!clan invite @user`, `!clan join <name>`, `!clan accept <name>`, `!clan decline <name>`, `!clan rename <new name>`, `!clan privacy <public|private>`, `!clan leave`, `!clan transfer @user`, `!clan kick @user`, `!clan war <name>`, `!clan info [name]`, or `!clan top`.')],
+        components: !user.clan ? [buildClanCreateRow()] : user.clanRole === 'owner' ? [buildClanRenameRow()] : []
+      });
     }
 
     if (subcommand === 'create') {
@@ -1686,6 +1998,7 @@ client.on('messageCreate', async (message) => {
       user.aura -= CLAN_CREATE_COST;
       user.clan = clanName;
       user.clanRole = 'owner';
+      user.clanPrivacy = 'private';
       user.clanInvites = [];
       user.clanLevel = 1;
       user.clanXp = 0;
@@ -1696,6 +2009,8 @@ client.on('messageCreate', async (message) => {
         .addFields(
           field('Owner', `<@${user.userId}>`),
           field('Clan Level', user.clanLevel),
+          field('Privacy', user.clanPrivacy),
+          field('Member Cap', getClanLevelData(user.clanLevel).perks.memberCap),
           field('Wallet Left', user.aura)
         );
       return message.reply({ embeds: [embed] });
@@ -1726,9 +2041,17 @@ client.on('messageCreate', async (message) => {
 
       target.clanInvites.push(user.clan);
       await target.save();
+      pendingClanInvites.set(`${user.clan}:${targetUser.id}`, {
+        clanName: user.clan,
+        inviterId: user.userId,
+        targetId: targetUser.id,
+        createdAt: Date.now()
+      });
+
       const embed = createEmbed(message, 'Clan Invite Sent', EMBED_COLORS.info)
-        .setDescription(`Invited **${targetUser.username}** to **${user.clan}**.`);
-      return message.reply({ embeds: [embed] });
+        .setDescription(`Invited **${targetUser.username}** to **${user.clan}**.`)
+        .addFields(field('Invitee', `<@${targetUser.id}>`), field('Privacy', user.clanPrivacy));
+      return message.reply({ embeds: [embed], components: [buildClanInviteRow(user.clan, targetUser.id)] });
     }
 
     if (subcommand === 'join') {
@@ -1738,22 +2061,27 @@ client.on('messageCreate', async (message) => {
 
       const existingClan = await User.findOne({ clan: new RegExp(`^${clanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') });
       if (!existingClan) return message.reply('That clan does not exist.');
-      if (!user.clanInvites.includes(existingClan.clan)) return message.reply(`You need an invite to join **${existingClan.clan}**. Use !clan accept ${existingClan.clan} after being invited.`);
+      const hasInvite = user.clanInvites.includes(existingClan.clan);
+      const isPublicClan = (existingClan.clanPrivacy || 'private') === 'public';
+      if (!hasInvite && !isPublicClan) return message.reply(`You need an invite to join **${existingClan.clan}**. Use !clan accept ${existingClan.clan} after being invited.`);
       const clanPerks = getClanLevelData(existingClan.clanLevel || 1).perks;
       const memberCount = await User.countDocuments({ clan: existingClan.clan });
       if (memberCount >= clanPerks.memberCap) return message.reply(`**${existingClan.clan}** is full. Member cap: ${clanPerks.memberCap}.`);
 
       user.clan = existingClan.clan;
       user.clanRole = 'member';
+      user.clanPrivacy = existingClan.clanPrivacy || 'private';
       user.clanInvites = user.clanInvites.filter(invite => invite !== existingClan.clan);
       user.clanLevel = existingClan.clanLevel || 1;
       user.clanXp = existingClan.clanXp || 0;
       await user.save();
+      pendingClanInvites.delete(`${existingClan.clan}:${user.userId}`);
       const embed = createEmbed(message, 'Clan Joined', EMBED_COLORS.success)
         .setDescription(`You joined **${existingClan.clan}**.`)
         .addFields(
           field('Clan Level', user.clanLevel),
-          field('Role', user.clanRole)
+          field('Role', user.clanRole),
+          field('Privacy', user.clanPrivacy)
         );
       return message.reply({ embeds: [embed] });
     }
@@ -1779,15 +2107,18 @@ client.on('messageCreate', async (message) => {
 
       user.clan = existingClan.clan;
       user.clanRole = 'member';
+      user.clanPrivacy = existingClan.clanPrivacy || 'private';
       user.clanInvites = user.clanInvites.filter(invite => invite !== inviteName);
       user.clanLevel = existingClan.clanLevel || 1;
       user.clanXp = existingClan.clanXp || 0;
       await user.save();
+      pendingClanInvites.delete(`${existingClan.clan}:${user.userId}`);
       const embed = createEmbed(message, 'Clan Invite Accepted', EMBED_COLORS.success)
         .setDescription(`You joined **${existingClan.clan}**.`)
         .addFields(
           field('Clan Level', user.clanLevel),
-          field('Role', user.clanRole)
+          field('Role', user.clanRole),
+          field('Privacy', user.clanPrivacy)
         );
       return message.reply({ embeds: [embed] });
     }
@@ -1801,9 +2132,74 @@ client.on('messageCreate', async (message) => {
 
       user.clanInvites = user.clanInvites.filter(invite => invite !== inviteName);
       await user.save();
+      pendingClanInvites.delete(`${inviteName}:${user.userId}`);
       const embed = createEmbed(message, 'Clan Invite Declined', EMBED_COLORS.danger)
         .setDescription(`Declined invite to **${inviteName}**.`);
       return message.reply({ embeds: [embed] });
+    }
+
+    if (subcommand === 'rename') {
+      if (!user.clan) return message.reply('You are not in a clan.');
+      if (user.clanRole !== 'owner') return message.reply('Only the clan owner can rename the clan.');
+
+      const newClanName = normalizeClanName(args.slice(1).join(' '));
+      if (!newClanName) return message.reply('Enter a new clan name. Example: !clan rename Shadow Order');
+      if (!isValidClanName(newClanName)) return message.reply('Clan names must be 3-20 characters and use only letters, numbers, and spaces.');
+      if (newClanName.toLowerCase() === user.clan.toLowerCase()) return message.reply('That is already your clan name.');
+      if (getActiveClanWar(user.clan) || hasPendingClanWar(user.clan) || getActiveClanBossRaid(user.clan)) {
+        return message.reply('Finish active clan wars, pending clan wars, and clan raids before renaming the clan.');
+      }
+
+      const oldClanName = user.clan;
+      const existingClan = await User.findOne({ clan: new RegExp(`^${newClanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') });
+      if (existingClan) return message.reply('That clan name is already taken.');
+
+      await User.updateMany({ clan: oldClanName }, { $set: { clan: newClanName } });
+
+      const invitedUsers = await User.find({ clanInvites: oldClanName });
+      for (const invitedUser of invitedUsers) {
+        invitedUser.clanInvites = invitedUser.clanInvites.map(invite => invite === oldClanName ? newClanName : invite);
+        await invitedUser.save();
+      }
+
+      for (const [key, invite] of pendingClanInvites.entries()) {
+        if (invite.clanName === oldClanName) {
+          pendingClanInvites.delete(key);
+          pendingClanInvites.set(`${newClanName}:${invite.targetId}`, { ...invite, clanName: newClanName });
+        }
+      }
+
+      user.clan = newClanName;
+      await user.save();
+
+      return message.reply({
+        embeds: [
+          createEmbed(message, 'Clan Renamed', EMBED_COLORS.success)
+            .setDescription(`Your clan is now **${newClanName}**.`)
+            .addFields(field('Old Name', oldClanName), field('New Name', newClanName))
+        ]
+      });
+    }
+
+    if (subcommand === 'privacy') {
+      if (!user.clan) return message.reply('You are not in a clan.');
+      if (user.clanRole !== 'owner') return message.reply('Only the clan owner can change clan privacy.');
+
+      const mode = (args[1] || '').toLowerCase();
+      if (!['public', 'private'].includes(mode)) {
+        return message.reply('Choose `public` or `private`. Example: !clan privacy public');
+      }
+
+      await syncClanSettings(user.clan, { clanPrivacy: mode });
+      user.clanPrivacy = mode;
+
+      return message.reply({
+        embeds: [
+          createEmbed(message, 'Clan Privacy Updated', EMBED_COLORS.info)
+            .setDescription(`**${user.clan}** is now **${mode}**.`)
+            .addFields(field('Join Rule', mode === 'public' ? 'Anyone can join with `!clan join` or the Join Clan button.' : 'Only invited players can join.'))
+        ]
+      });
     }
 
     if (subcommand === 'leave') {
@@ -1819,6 +2215,7 @@ client.on('messageCreate', async (message) => {
       const oldMembers = await User.countDocuments({ clan: oldClan });
       user.clan = null;
       user.clanRole = null;
+      user.clanPrivacy = 'private';
       user.clanLevel = 1;
       user.clanXp = 0;
       await user.save();
@@ -1865,6 +2262,7 @@ client.on('messageCreate', async (message) => {
 
       target.clan = null;
       target.clanRole = null;
+      target.clanPrivacy = 'private';
       target.clanLevel = 1;
       target.clanXp = 0;
       await target.save();
@@ -1893,7 +2291,7 @@ client.on('messageCreate', async (message) => {
         const embed = createEmbed(message, 'Clan War Roster', EMBED_COLORS.info)
           .setDescription(`You joined the war roster for **${user.clan}**.`)
           .addFields(field('Roster Size', war[rosterKey].length), field('Cap', cap));
-        return message.reply({ embeds: [embed] });
+        return message.reply({ embeds: [embed], components: [buildClanWarRow(user, war)] });
       }
 
       if (warAction === 'leave') {
@@ -1906,7 +2304,7 @@ client.on('messageCreate', async (message) => {
         war.logs.push(`${message.author.username} left the ${user.clan} war roster.`);
         const embed = createEmbed(message, 'Clan War Roster', EMBED_COLORS.danger)
           .setDescription(`You left the war roster for **${user.clan}**.`);
-        return message.reply({ embeds: [embed] });
+        return message.reply({ embeds: [embed], components: [buildClanWarRow(user, war)] });
       }
 
       if (warAction === 'status') {
@@ -1925,7 +2323,7 @@ client.on('messageCreate', async (message) => {
             field(`${war.defenderClan} Roster`, `${war.defenderParticipants.length}/${defenderCap}`),
             field('Recent Logs', recentLogs, false)
           );
-        return message.reply({ embeds: [embed] });
+        return message.reply({ embeds: [embed], components: [buildClanWarRow(user, war)] });
       }
 
       if (warAction === 'start') {
@@ -1953,7 +2351,7 @@ client.on('messageCreate', async (message) => {
             field('Rewards', `Winner members +6000 Aura • Loser members +2000 Aura • +${result.winnerClanXp.gained || 0} Clan XP`, false),
             field('War Log', war.logs.slice(-6).join('\n'), false)
           );
-        return message.reply({ embeds: [embed] });
+        return message.reply({ embeds: [embed], components: [] });
       }
 
       if (user.clanRole !== 'owner') return message.reply('Only the clan owner can start a clan war.');
@@ -2015,6 +2413,7 @@ client.on('messageCreate', async (message) => {
         .setDescription(clanData.reward)
         .addFields(
           field('Owner', clanOwner ? `<@${clanOwner.userId}>` : 'None'),
+          field('Privacy', summary.privacy),
           field('Members', `${summary.members.length}/${clanData.perks.memberCap}`),
           field('Total Aura', summary.totalAura),
           field('Total Wins', summary.totalWins),
@@ -2022,7 +2421,22 @@ client.on('messageCreate', async (message) => {
           field('Clan Progress', clanLevelProgress(summary.members[0]), false),
           field('Roster', memberText || 'No members', false)
         );
-      return message.reply({ embeds: [embed] });
+
+      const rows = [];
+      const hasInvite = user.clanInvites.includes(summary.name);
+      if (!user.clan && summary.privacy === 'public') {
+        rows.push(buildClanJoinRow(summary.name));
+      } else if (!user.clan && hasInvite) {
+        rows.push(buildClanInviteRow(summary.name, user.userId));
+      } else if (user.clan === summary.name) {
+        if (user.clanRole === 'owner') {
+          rows.push(buildClanPrivacyRow(summary.name, user.userId, summary.privacy));
+          rows.push(buildClanRenameRow());
+        }
+        rows.push(buildClanLeaveRow(summary.name));
+      }
+
+      return message.reply({ embeds: [embed], components: rows });
     }
 
     if (subcommand === 'top') {
@@ -2049,7 +2463,7 @@ client.on('messageCreate', async (message) => {
       return message.reply({ embeds: [embed] });
     }
 
-    return message.reply({ embeds: [warningEmbed(message, 'Unknown Clan Command', 'Use `!clan create`, `!clan invite`, `!clan join`, `!clan accept`, `!clan decline`, `!clan leave`, `!clan transfer`, `!clan kick`, `!clan war <name>`, `!clan war join`, `!clan war leave`, `!clan war start`, `!clan war status`, `!clan info`, or `!clan top`.')] });
+    return message.reply({ embeds: [warningEmbed(message, 'Unknown Clan Command', 'Use `!clan create`, `!clan invite`, `!clan join`, `!clan accept`, `!clan decline`, `!clan rename`, `!clan privacy`, `!clan leave`, `!clan transfer`, `!clan kick`, `!clan war <name>`, `!clan war join`, `!clan war leave`, `!clan war start`, `!clan war status`, `!clan info`, or `!clan top`.')] });
   }
 
   if (message.content === '!leaderboard') {
@@ -2066,7 +2480,8 @@ client.on('messageCreate', async (message) => {
         field('Items', inventorySummary(user), false),
         field('Active Boosts', activeBoostSummary(user), false)
       );
-    return message.reply({ embeds: [embed] });
+    const inventoryRow = buildInventoryRow(user);
+    return message.reply({ embeds: [embed], components: inventoryRow ? [inventoryRow] : [] });
   }
 
   if (message.content === '!stats') {
@@ -2088,12 +2503,986 @@ client.on('messageCreate', async (message) => {
 // ================= BUTTON-BASED PVP =================
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isButton()) return;
+  if (!interaction.guild) {
+    return interaction.reply({ embeds: [interactionNoticeEmbed('Server Only', 'These buttons can only be used inside a server.', EMBED_COLORS.danger)], ephemeral: true });
+  }
+
+  const guildConfig = await getGuildConfig(interaction.guild.id);
+  if (guildConfig.botChannelId && interaction.channelId !== guildConfig.botChannelId) {
+    return interaction.reply({
+      embeds: [
+        interactionNoticeEmbed('Wrong Channel', `Use bot interactions in <#${guildConfig.botChannelId}>.`, EMBED_COLORS.danger)
+      ],
+      ephemeral: true
+    });
+  }
 
   const user = await getUser(interaction.user.id);
   removeExpiredBoosts(user);
   const vaultInterest = applyVaultInterest(user);
   if (vaultInterest.applied > 0) {
     await user.save();
+  }
+
+  if (interaction.customId.startsWith('help_')) {
+    const sectionKey = interaction.customId.replace('help_', '');
+    const section = getHelpCategories().find(category => category.key === sectionKey);
+
+    if (!section) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Help Missing', 'That help section was not found.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    return interaction.reply({
+      embeds: [buildHelpSectionEmbed({ author: interaction.user }, section)],
+      components: [buildHelpRow()],
+      ephemeral: true
+    });
+  }
+
+  if (interaction.customId.startsWith('shop_buy:')) {
+    const itemKey = interaction.customId.split(':')[1];
+    const shopItem = SHOP_ITEMS[itemKey];
+
+    if (!shopItem) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Unknown Item', 'That item is not in the shop.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    if (user.aura < shopItem.price) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Not Enough Aura', 'You do not have enough Aura for that purchase.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    const ownedCount = countItem(user, shopItem.name);
+    if (ownedCount >= shopItem.maxOwned) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Item Cap Reached', `You already have the max allowed ${shopItem.name} (${shopItem.maxOwned}).`, EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    user.aura -= shopItem.price;
+    user.inventory.push(shopItem.name);
+    updateRank(user);
+    await user.save();
+
+    return interaction.reply({
+      embeds: [
+        interactionNoticeEmbed('Purchase Complete', `Bought **${shopItem.name}** for ${shopItem.price} Aura.`, EMBED_COLORS.success)
+      ],
+      ephemeral: true
+    });
+  }
+
+  if (interaction.customId.startsWith('item_use:')) {
+    const itemKey = interaction.customId.split(':')[1];
+    const shopItem = SHOP_ITEMS[itemKey];
+
+    if (!shopItem || !shopItem.boostKey) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Item Not Usable', 'That item cannot be used.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    if (!hasItem(user, shopItem.name)) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Missing Item', `You do not have ${shopItem.name}.`, EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    if (isBoostActive(user, shopItem.boostKey)) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Boost Already Active', `${BOOST_LABELS[shopItem.boostKey]} is already active.`, EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    removeItem(user, shopItem.name);
+    activateBoost(user, shopItem.boostKey, shopItem.multiplier, shopItem.durationMs);
+    await user.save();
+
+    return interaction.reply({
+      embeds: [
+        interactionNoticeEmbed('Boost Activated', `${shopItem.name} is now active for ${formatDuration(shopItem.durationMs)}.`, EMBED_COLORS.success)
+      ],
+      ephemeral: true
+    });
+  }
+
+  if (interaction.customId === 'item_open_crate') {
+    if (!hasItem(user, 'Crate')) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('No Crate', 'You do not have a crate to open.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    removeItem(user, 'Crate');
+    const auraResult = addAura(user, Math.floor(Math.random() * 8000), 'crate');
+    const xpResult = addXp(user, 50 + Math.floor(Math.random() * 30));
+    const clanXpResult = await addClanXp(user.clan, 25);
+    xpResult.level = user.level;
+    await user.save();
+
+    return interaction.reply({
+      embeds: [
+        new EmbedBuilder()
+          .setColor(EMBED_COLORS.primary)
+          .setTitle('Crate Opened')
+          .addFields(
+            field('Aura', `+${auraResult.reward}${auraResult.multiplier > 1 ? ` (${auraResult.multiplier}x boost)` : ''}`),
+            field('XP', `+${xpResult.reward}`),
+            field('Clan XP', `+${clanXpResult.gained || 0}`)
+          )
+          .setTimestamp()
+      ],
+      ephemeral: true
+    });
+  }
+
+  if (interaction.customId === 'econ_bal') {
+    updateRank(user);
+    const embed = new EmbedBuilder()
+      .setColor(EMBED_COLORS.success)
+      .setTitle('Balance Overview')
+      .addFields(
+        field('Wallet', user.aura),
+        field('Vault', user.vault),
+        field('Rank', user.rank),
+        field('Clan', user.clan ? `${user.clan} (Lv ${user.clanLevel})` : 'None')
+      )
+      .setTimestamp();
+
+    return interaction.reply({ embeds: [embed], components: buildEconomyRows(user), ephemeral: true });
+  }
+
+  if (interaction.customId === 'econ_deposit_all') {
+    if (user.aura <= 0) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('No Aura', 'You have no Aura in your wallet to deposit.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    const amount = user.aura;
+    user.aura = 0;
+    user.vault += amount;
+    user.lastVaultInterest = Date.now();
+    updateRank(user);
+    await user.save();
+
+    return interaction.reply({
+      embeds: [interactionNoticeEmbed('Vault Deposit', `Deposited ${amount} Aura into your vault.`, EMBED_COLORS.success)],
+      components: buildEconomyRows(user),
+      ephemeral: true
+    });
+  }
+
+  if (interaction.customId === 'econ_daily') {
+    const cd = cooldown(user, 'daily', 86400000);
+    if (cd) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Cooldown Active', `Wait ${cd}s before claiming daily again.`, EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    user.streak++;
+    const auraResult = addAura(user, 5000 * user.streak, 'daily');
+    const xpResult = addXp(user, 120 + user.streak * 10);
+    const clanXpResult = await addClanXp(user.clan, 50 + user.streak * 5);
+    xpResult.level = user.level;
+    await user.save();
+
+    return interaction.reply({
+      embeds: [
+        new EmbedBuilder()
+          .setColor(EMBED_COLORS.success)
+          .setTitle('Daily Reward')
+          .setDescription(`Your streak is now **${user.streak}**.`)
+          .addFields(
+            field('Aura', `+${auraResult.reward}${auraResult.multiplier > 1 ? ` (${auraResult.multiplier}x boost)` : ''}`),
+            field('XP', `+${xpResult.reward}`),
+            field('Clan XP', `+${clanXpResult.gained || 0}`),
+            field('Progress', `${levelProgress(user)}${user.clan ? `\n${clanLevelProgress(user)}` : ''}`, false)
+          )
+          .setTimestamp()
+      ],
+      components: buildEconomyRows(user),
+      ephemeral: true
+    });
+  }
+
+  if (interaction.customId === 'econ_vaultinterest') {
+    const nextIn = Math.max(VAULT_INTEREST_INTERVAL - (Date.now() - user.lastVaultInterest), 0);
+    const effectiveRate = ((VAULT_INTEREST_RATE + getRankPerks(user).vaultBonus + getClanPerks(user).vaultBonus) * 100).toFixed(2);
+
+    return interaction.reply({
+      embeds: [
+        new EmbedBuilder()
+          .setColor(EMBED_COLORS.success)
+          .setTitle('Vault Interest')
+          .setDescription('Your vault grows passively over time.')
+          .addFields(
+            field('Vault', user.vault),
+            field('Rate', `${effectiveRate}% every 24h`),
+            field('Next Payout', formatDuration(nextIn))
+          )
+          .setTimestamp()
+      ],
+      components: buildEconomyRows(user),
+      ephemeral: true
+    });
+  }
+
+  if (interaction.customId === 'econ_coinflip_modal') {
+    const modal = new ModalBuilder()
+      .setCustomId('modal_coinflip')
+      .setTitle('Coinflip');
+
+    const choiceInput = new TextInputBuilder()
+      .setCustomId('choice')
+      .setLabel('Choice: heads or tails')
+      .setStyle(TextInputStyle.Short)
+      .setRequired(true)
+      .setMaxLength(5);
+
+    const amountInput = new TextInputBuilder()
+      .setCustomId('amount')
+      .setLabel('Bet amount')
+      .setStyle(TextInputStyle.Short)
+      .setRequired(true)
+      .setMaxLength(12);
+
+    modal.addComponents(
+      new ActionRowBuilder().addComponents(choiceInput),
+      new ActionRowBuilder().addComponents(amountInput)
+    );
+
+    return interaction.showModal(modal);
+  }
+
+  if (interaction.customId === 'econ_deposit_modal') {
+    const modal = new ModalBuilder()
+      .setCustomId('modal_deposit')
+      .setTitle('Deposit Aura');
+
+    const amountInput = new TextInputBuilder()
+      .setCustomId('amount')
+      .setLabel('Amount or "all"')
+      .setStyle(TextInputStyle.Short)
+      .setRequired(true)
+      .setMaxLength(12);
+
+    modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
+    return interaction.showModal(modal);
+  }
+
+  if (interaction.customId === 'clan_create_modal') {
+    const modal = new ModalBuilder()
+      .setCustomId('modal_clan_create')
+      .setTitle('Create Clan');
+
+    const nameInput = new TextInputBuilder()
+      .setCustomId('name')
+      .setLabel('Clan name')
+      .setStyle(TextInputStyle.Short)
+      .setRequired(true)
+      .setMaxLength(20);
+
+    modal.addComponents(new ActionRowBuilder().addComponents(nameInput));
+    return interaction.showModal(modal);
+  }
+
+  if (interaction.customId === 'clan_rename_modal') {
+    const modal = new ModalBuilder()
+      .setCustomId('modal_clan_rename')
+      .setTitle('Rename Clan');
+
+    const nameInput = new TextInputBuilder()
+      .setCustomId('name')
+      .setLabel('New clan name')
+      .setStyle(TextInputStyle.Short)
+      .setRequired(true)
+      .setMaxLength(20);
+
+    modal.addComponents(new ActionRowBuilder().addComponents(nameInput));
+    return interaction.showModal(modal);
+  }
+
+  if (interaction.customId === 'skill_paths') {
+    return interaction.reply({
+      embeds: [buildHelpSectionEmbed({ author: interaction.user }, { name: 'Skill Paths', summary: 'Choose a specialization once a branch reaches level 5.', commands: [] }).setDescription(`Skill specializations unlock at branch level 5.\n${specializationSummary()}`)],
+      components: [buildSkillPathRow('dmg'), buildSkillPathRow('defense'), buildSkillPathRow('luck')],
+      ephemeral: true
+    });
+  }
+
+  if (interaction.customId.startsWith('skill_upgrade:')) {
+    const skillName = interaction.customId.split(':')[1];
+    if (!['dmg', 'defense', 'luck'].includes(skillName)) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Skill Missing', 'That skill branch was not found.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    const points = availableSkillPoints(user);
+    const cost = nextSkillCost(user, skillName);
+    if (points < cost) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Not Enough Skill Points', `You need ${cost} skill points to upgrade ${skillName}. Available: ${points}.`, EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    user.skills[skillName] += 1;
+    user.markModified('skills');
+    await user.save();
+
+    return interaction.reply({
+      embeds: [
+        interactionNoticeEmbed('Skill Upgraded', `Upgraded **${skillName}** to **${user.skills[skillName]}**.`, EMBED_COLORS.success)
+      ],
+      components: [buildSkillUpgradeRow()],
+      ephemeral: true
+    });
+  }
+
+  if (interaction.customId.startsWith('skill_specialize:')) {
+    const [, skillName, pathName] = interaction.customId.split(':');
+    if (!['dmg', 'defense', 'luck'].includes(skillName) || !SKILL_SPECIALIZATIONS[skillName]?.[pathName]) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Path Missing', 'That specialization was not found.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    if (user.skills[skillName] < 5) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Branch Too Low', `You need ${skillName} level 5 to unlock a specialization.`, EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    if (getSpecialization(user, skillName)) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Already Specialized', `You already chose ${getSpecialization(user, skillName)} for ${skillName}.`, EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    user.specializations[skillName] = pathName;
+    user.markModified('specializations');
+    await user.save();
+
+    return interaction.reply({
+      embeds: [
+        interactionNoticeEmbed('Specialization Chosen', `Specialized **${skillName}** into **${pathName}**.\n${SKILL_SPECIALIZATIONS[skillName][pathName]}`, EMBED_COLORS.success)
+      ],
+      components: [buildSkillUpgradeRow()],
+      ephemeral: true
+    });
+  }
+
+  if (interaction.customId.startsWith('boss_start:')) {
+    const bossKey = interaction.customId.split(':')[1];
+    const boss = findBoss(bossKey);
+
+    if (!boss) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Unknown Boss', 'Choose a valid boss.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    if (activeBossBattles.has(user.userId)) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Boss Fight Active', 'You already have an active solo boss fight.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    if (user.level < boss.minLevel) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Level Too Low', `You need to be level ${boss.minLevel} to fight ${boss.name}.`, EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    const maxPlayerHp = battleMaxHp(user);
+    activeBossBattles.set(user.userId, {
+      playerId: user.userId,
+      boss,
+      bossHp: boss.hp,
+      playerHp: maxPlayerHp,
+      maxPlayerHp,
+      healsLeft: 3
+    });
+
+    const state = activeBossBattles.get(user.userId);
+    return interaction.reply({
+      embeds: [
+        new EmbedBuilder()
+          .setColor(EMBED_COLORS.danger)
+          .setTitle(`Solo Boss: ${boss.name}`)
+          .setDescription(boss.description)
+          .addFields(
+            field('Boss HP', `${state.bossHp}/${boss.hp}`),
+            field('Your HP', `${state.playerHp}/${state.maxPlayerHp}`),
+            field('Heals Left', state.healsLeft),
+            field('Rewards', `${boss.aura} Aura • ${boss.xp} XP • ${boss.clanXp} Clan XP`, false),
+            field('Perk', boss.perk.label, false)
+          )
+          .setTimestamp()
+      ],
+      components: [buildSoloBossRow()],
+      ephemeral: true
+    });
+  }
+
+  if (interaction.customId === 'boss_attack' || interaction.customId === 'boss_heal' || interaction.customId === 'boss_status') {
+    const state = activeBossBattles.get(user.userId);
+    if (!state) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('No Boss Fight', 'You do not have an active solo boss fight.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    if (interaction.customId === 'boss_status') {
+      return interaction.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(EMBED_COLORS.danger)
+            .setTitle(`Solo Boss: ${state.boss.name}`)
+            .addFields(
+              field('Boss HP', `${Math.max(state.bossHp, 0)}/${state.boss.hp} ${bar(Math.max(state.bossHp, 0), state.boss.hp)}`, false),
+              field('Your HP', `${Math.max(state.playerHp, 0)}/${state.maxPlayerHp} ${bar(Math.max(state.playerHp, 0), state.maxPlayerHp)}`, false),
+              field('Heals Left', state.healsLeft),
+              field('Reward Perk', state.boss.perk.label)
+            )
+            .setTimestamp()
+        ],
+        components: [buildSoloBossRow()],
+        ephemeral: true
+      });
+    }
+
+    if (interaction.customId === 'boss_attack') {
+      const hit = bossPlayerAttack(user, state.boss);
+      state.bossHp -= hit.damage;
+
+      if (state.bossHp <= 0) {
+        const auraResult = addAura(user, state.boss.aura, 'aura');
+        const xpResult = addXp(user, state.boss.xp);
+        const clanXpResult = await addClanXp(user.clan, state.boss.clanXp);
+        const perkGranted = activateBoost(user, state.boss.perk.key, state.boss.perk.multiplier, state.boss.perk.durationMs);
+        xpResult.level = user.level;
+        await user.save();
+        activeBossBattles.delete(user.userId);
+
+        return interaction.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(EMBED_COLORS.success)
+              .setTitle(`Boss Defeated: ${state.boss.name}`)
+              .setDescription(`Final hit: ${hit.damage}${hit.crit ? ' (CRIT)' : ''}`)
+              .addFields(
+                field('Aura', `+${auraResult.reward}`),
+                field('XP', `+${xpResult.reward}`),
+                field('Clan XP', `+${clanXpResult.gained || 0}`),
+                field('Perk', perkGranted ? state.boss.perk.label : `${state.boss.perk.label} already active`, false)
+              )
+              .setTimestamp()
+          ],
+          components: [buildBossStartRow()],
+          ephemeral: true
+        });
+      }
+
+      const counter = bossCounterDamage(user, state.boss);
+      state.playerHp -= counter.damage;
+
+      if (state.playerHp <= 0) {
+        activeBossBattles.delete(user.userId);
+        return interaction.reply({
+          embeds: [
+            interactionNoticeEmbed('Defeat', `The boss ended the fight ${counter.dodged ? 'after a dodged counter' : `with ${counter.damage} damage`}.`, EMBED_COLORS.danger)
+          ],
+          components: [buildBossStartRow()],
+          ephemeral: true
+        });
+      }
+
+      return interaction.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(EMBED_COLORS.danger)
+            .setTitle(`Boss Turn: ${state.boss.name}`)
+            .setDescription(`You dealt ${hit.damage}${hit.crit ? ' (CRIT)' : ''}. Boss counter: ${counter.dodged ? 'dodged' : `${counter.damage} damage`}.`)
+            .addFields(
+              field('Boss HP', `${Math.max(state.bossHp, 0)}/${state.boss.hp} ${bar(Math.max(state.bossHp, 0), state.boss.hp)}`, false),
+              field('Your HP', `${Math.max(state.playerHp, 0)}/${state.maxPlayerHp} ${bar(Math.max(state.playerHp, 0), state.maxPlayerHp)}`, false),
+              field('Heals Left', state.healsLeft)
+            )
+            .setTimestamp()
+        ],
+        components: [buildSoloBossRow()],
+        ephemeral: true
+      });
+    }
+
+    if (state.healsLeft <= 0) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('No Heals Left', 'You have no heals left in this boss fight.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+    if (state.playerHp >= state.maxPlayerHp) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('HP Full', 'Your HP is already full.', EMBED_COLORS.info)], ephemeral: true });
+    }
+
+    const healed = bossHealAmount(user, state.maxPlayerHp - state.playerHp);
+    state.playerHp += healed;
+    state.healsLeft -= 1;
+
+    const counter = bossCounterDamage(user, state.boss);
+    state.playerHp -= counter.damage;
+
+    if (state.playerHp <= 0) {
+      activeBossBattles.delete(user.userId);
+      return interaction.reply({
+        embeds: [interactionNoticeEmbed('Defeat', `You healed for ${healed}, but the boss still won.`, EMBED_COLORS.danger)],
+        components: [buildBossStartRow()],
+        ephemeral: true
+      });
+    }
+
+    return interaction.reply({
+      embeds: [
+        new EmbedBuilder()
+          .setColor(EMBED_COLORS.success)
+          .setTitle(`Boss Heal: ${state.boss.name}`)
+          .setDescription(`You healed for ${healed}. Boss counter: ${counter.dodged ? 'dodged' : `${counter.damage} damage`}.`)
+          .addFields(
+            field('Boss HP', `${Math.max(state.bossHp, 0)}/${state.boss.hp} ${bar(Math.max(state.bossHp, 0), state.boss.hp)}`, false),
+            field('Your HP', `${Math.max(state.playerHp, 0)}/${state.maxPlayerHp} ${bar(Math.max(state.playerHp, 0), state.maxPlayerHp)}`, false),
+            field('Heals Left', state.healsLeft)
+          )
+          .setTimestamp()
+      ],
+      components: [buildSoloBossRow()],
+      ephemeral: true
+    });
+  }
+
+  if (interaction.customId === 'boss_clan_join' || interaction.customId === 'boss_clan_attack' || interaction.customId === 'boss_clan_heal' || interaction.customId === 'boss_clan_status') {
+    if (!user.clan) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('No Clan', 'You need to be in a clan to use clan boss raids.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    const raid = getActiveClanBossRaid(user.clan);
+    if (!raid) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('No Active Raid', 'Your clan does not have an active boss raid.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    if (interaction.customId === 'boss_clan_join') {
+      const cap = clanBossParticipantCap(raid.clanLevel || 1);
+      if (raid.participants.includes(user.userId)) {
+        return interaction.reply({ embeds: [interactionNoticeEmbed('Already Joined', 'You are already in the clan boss raid.', EMBED_COLORS.danger)], ephemeral: true });
+      }
+      if (raid.participants.length >= cap) {
+        return interaction.reply({ embeds: [interactionNoticeEmbed('Raid Full', `The clan boss raid is full. Cap: ${cap}.`, EMBED_COLORS.danger)], ephemeral: true });
+      }
+
+      raid.participants.push(user.userId);
+      raid.playerMaxHp[user.userId] = battleMaxHp(user);
+      raid.playerHp[user.userId] = raid.playerMaxHp[user.userId];
+      raid.healsLeft[user.userId] = 3;
+      raid.damageByUser[user.userId] = raid.damageByUser[user.userId] || 0;
+      raid.logs.push(`${interaction.user.username} joined the raid.`);
+
+      return interaction.reply({
+        embeds: [interactionNoticeEmbed('Raid Joined', `You joined the clan boss raid for **${user.clan}**.`, EMBED_COLORS.success)],
+        components: [buildClanBossRow()],
+        ephemeral: true
+      });
+    }
+
+    if (interaction.customId === 'boss_clan_status') {
+      const roster = raid.participants.length > 0
+        ? raid.participants.map(id => `<@${id}> • ${Math.max(raid.playerHp[id] || 0, 0)}/${raid.playerMaxHp[id] || 1}`).join('\n')
+        : 'No participants yet.';
+
+      return interaction.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(EMBED_COLORS.danger)
+            .setTitle(`Clan Raid: ${raid.boss.name}`)
+            .setDescription(`Clan: **${raid.clanName}**`)
+            .addFields(
+              field('Boss HP', `${Math.max(raid.bossHp, 0)}/${raid.boss.clanHp} ${bar(Math.max(raid.bossHp, 0), raid.boss.clanHp)}`, false),
+              field('Participants', raid.participants.length),
+              field('Top Logs', raid.logs.slice(-4).join('\n') || 'No logs yet.', false),
+              field('Roster', roster, false)
+            )
+            .setTimestamp()
+        ],
+        components: [buildClanBossRow()],
+        ephemeral: true
+      });
+    }
+
+    if (!raid.participants.includes(user.userId)) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Join The Raid', 'Join the raid first.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+    if ((raid.playerHp[user.userId] || 0) <= 0) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Raid KO', `You are down in this raid and cannot ${interaction.customId === 'boss_clan_attack' ? 'attack' : 'heal'}.`, EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    if (interaction.customId === 'boss_clan_attack') {
+      const hit = bossPlayerAttack(user, raid.boss);
+      raid.bossHp -= hit.damage;
+      raid.damageByUser[user.userId] = (raid.damageByUser[user.userId] || 0) + hit.damage;
+      raid.logs.push(`${interaction.user.username} dealt ${hit.damage}${hit.crit ? ' crit' : ''} damage.`);
+
+      if (raid.bossHp <= 0) {
+        const rewards = await rewardClanBossRaid(raid);
+        activeClanBossRaids.delete(raid.clanName);
+        return interaction.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(EMBED_COLORS.success)
+              .setTitle(`Clan Boss Defeated: ${raid.boss.name}`)
+              .setDescription(`**${raid.clanName}** cleared the raid.`)
+              .addFields(
+                field('Top Damage', rewards.topDamagerId ? `<@${rewards.topDamagerId}>` : 'None'),
+                field('Perk Awarded', raid.boss.perk.label),
+                field('Clan XP', `+${rewards.clanXpResult.gained || 0}`),
+                field('Rewards', rewards.rewardLines.join('\n'), false)
+              )
+              .setTimestamp()
+          ],
+          components: [buildBossStartRow()],
+          ephemeral: true
+        });
+      }
+
+      const counter = bossCounterDamage(user, raid.boss);
+      raid.playerHp[user.userId] -= counter.damage;
+      raid.logs.push(counter.dodged ? `${interaction.user.username} dodged the counter.` : `${interaction.user.username} took ${counter.damage} counter damage.`);
+
+      const livingMembers = raid.participants.filter(id => (raid.playerHp[id] || 0) > 0);
+      if (livingMembers.length === 0) {
+        activeClanBossRaids.delete(raid.clanName);
+        return interaction.reply({
+          embeds: [interactionNoticeEmbed('Raid Failed', `The full **${raid.clanName}** roster was defeated.`, EMBED_COLORS.danger)],
+          components: [buildBossStartRow()],
+          ephemeral: true
+        });
+      }
+
+      return interaction.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(EMBED_COLORS.danger)
+            .setTitle(`Raid Turn: ${raid.boss.name}`)
+            .setDescription(`You dealt ${hit.damage}${hit.crit ? ' (CRIT)' : ''}. Boss counter: ${counter.dodged ? 'dodged' : `${counter.damage} damage`}.`)
+            .addFields(
+              field('Boss HP', `${Math.max(raid.bossHp, 0)}/${raid.boss.clanHp} ${bar(Math.max(raid.bossHp, 0), raid.boss.clanHp)}`, false),
+              field('Your HP', `${Math.max(raid.playerHp[user.userId], 0)}/${raid.playerMaxHp[user.userId]}`),
+              field('Roster Alive', livingMembers.length)
+            )
+            .setTimestamp()
+        ],
+        components: [buildClanBossRow()],
+        ephemeral: true
+      });
+    }
+
+    if ((raid.healsLeft[user.userId] || 0) <= 0) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('No Heals Left', 'You have no heals left in this raid.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    const maxHp = raid.playerMaxHp[user.userId];
+    if (raid.playerHp[user.userId] >= maxHp) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('HP Full', 'Your HP is already full.', EMBED_COLORS.info)], ephemeral: true });
+    }
+
+    const healed = bossHealAmount(user, maxHp - raid.playerHp[user.userId]);
+    raid.playerHp[user.userId] += healed;
+    raid.healsLeft[user.userId] -= 1;
+    const counter = bossCounterDamage(user, raid.boss);
+    raid.playerHp[user.userId] -= counter.damage;
+    raid.logs.push(`${interaction.user.username} healed for ${healed}.`);
+
+    const livingMembers = raid.participants.filter(id => (raid.playerHp[id] || 0) > 0);
+    if (livingMembers.length === 0) {
+      activeClanBossRaids.delete(raid.clanName);
+      return interaction.reply({
+        embeds: [interactionNoticeEmbed('Raid Failed', `You healed for ${healed}, but the raid still collapsed.`, EMBED_COLORS.danger)],
+        components: [buildBossStartRow()],
+        ephemeral: true
+      });
+    }
+
+    return interaction.reply({
+      embeds: [
+        new EmbedBuilder()
+          .setColor(EMBED_COLORS.success)
+          .setTitle(`Raid Heal: ${raid.boss.name}`)
+          .setDescription(`You healed for ${healed}. Boss counter: ${counter.dodged ? 'dodged' : `${counter.damage} damage`}.`)
+          .addFields(
+            field('Boss HP', `${Math.max(raid.bossHp, 0)}/${raid.boss.clanHp} ${bar(Math.max(raid.bossHp, 0), raid.boss.clanHp)}`, false),
+            field('Your HP', `${Math.max(raid.playerHp[user.userId], 0)}/${raid.playerMaxHp[user.userId]}`),
+            field('Heals Left', raid.healsLeft[user.userId])
+          )
+          .setTimestamp()
+      ],
+      components: [buildClanBossRow()],
+      ephemeral: true
+    });
+  }
+
+  if (interaction.customId === 'clanwar_join' || interaction.customId === 'clanwar_leave' || interaction.customId === 'clanwar_status' || interaction.customId === 'clanwar_start') {
+    if (!user.clan) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('No Clan', 'You are not in a clan.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    const war = getActiveClanWar(user.clan);
+    if (!war) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('No Active War', 'Your clan does not have an active clan war.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    if (interaction.customId === 'clanwar_status') {
+      const attackerCap = clanWarParticipantCap(war.attackerLevel);
+      const defenderCap = clanWarParticipantCap(war.defenderLevel);
+      const recentLogs = war.logs.slice(-5).join('\n') || 'No logs yet.';
+
+      return interaction.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(EMBED_COLORS.danger)
+            .setTitle('Clan War Status')
+            .setDescription(`**${war.attackerClan}** vs **${war.defenderClan}**`)
+            .addFields(
+              field('Started', war.started ? 'Yes' : 'No'),
+              field(`${war.attackerClan} Roster`, `${war.attackerParticipants.length}/${attackerCap}`),
+              field(`${war.defenderClan} Roster`, `${war.defenderParticipants.length}/${defenderCap}`),
+              field('Recent Logs', recentLogs, false)
+            )
+            .setTimestamp()
+        ],
+        components: [buildClanWarRow(user, war)],
+        ephemeral: true
+      });
+    }
+
+    const rosterKey = war.attackerClan === user.clan ? 'attackerParticipants' : 'defenderParticipants';
+    const clanLevel = war.attackerClan === user.clan ? war.attackerLevel : war.defenderLevel;
+    const cap = clanWarParticipantCap(clanLevel);
+
+    if (interaction.customId === 'clanwar_join') {
+      if (war.started) {
+        return interaction.reply({ embeds: [interactionNoticeEmbed('War Started', 'This clan war has already started.', EMBED_COLORS.danger)], ephemeral: true });
+      }
+      if (war[rosterKey].includes(user.userId)) {
+        return interaction.reply({ embeds: [interactionNoticeEmbed('Already Joined', 'You are already on the war roster.', EMBED_COLORS.danger)], ephemeral: true });
+      }
+      if (war[rosterKey].length >= cap) {
+        return interaction.reply({ embeds: [interactionNoticeEmbed('Roster Full', `Your clan war roster is full. Cap: ${cap}.`, EMBED_COLORS.danger)], ephemeral: true });
+      }
+
+      war[rosterKey].push(user.userId);
+      war.logs.push(`${interaction.user.username} joined the ${user.clan} war roster.`);
+      return interaction.reply({
+        embeds: [interactionNoticeEmbed('Clan War Roster', `You joined the war roster for **${user.clan}**.`, EMBED_COLORS.success)],
+        components: [buildClanWarRow(user, war)],
+        ephemeral: true
+      });
+    }
+
+    if (interaction.customId === 'clanwar_leave') {
+      if (war.started) {
+        return interaction.reply({ embeds: [interactionNoticeEmbed('War Started', 'This clan war has already started.', EMBED_COLORS.danger)], ephemeral: true });
+      }
+
+      war[rosterKey] = war[rosterKey].filter(id => id !== user.userId);
+      war.logs.push(`${interaction.user.username} left the ${user.clan} war roster.`);
+      return interaction.reply({
+        embeds: [interactionNoticeEmbed('Clan War Roster', `You left the war roster for **${user.clan}**.`, EMBED_COLORS.danger)],
+        components: [buildClanWarRow(user, war)],
+        ephemeral: true
+      });
+    }
+
+    if (user.clanRole !== 'owner' || (user.userId !== war.attackerOwnerId && user.userId !== war.defenderOwnerId)) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Owner Only', 'Only the two clan owners can start this war.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+    if (war.started) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('War Started', 'This clan war has already started.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+    if (war.attackerParticipants.length === 0 || war.defenderParticipants.length === 0) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Need Rosters', 'Both clans need at least one participant before the war can start.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    war.started = true;
+    const result = await resolveClanWar(war);
+    activeClanWars.delete(war.key);
+
+    return interaction.reply({
+      embeds: [
+        new EmbedBuilder()
+          .setColor(EMBED_COLORS.success)
+          .setTitle('Clan War Result')
+          .setDescription(`Winner: **${result.winnerClan}**`)
+          .addFields(
+            field('Loser', result.loserClan),
+            field('Score', `${war.attackerClan} ${result.attackerRounds} - ${war.defenderClan} ${result.defenderRounds}`),
+            field('Rewards', `Winner members +6000 Aura • Loser members +2000 Aura • +${result.winnerClanXp.gained || 0} Clan XP`, false),
+            field('War Log', war.logs.slice(-6).join('\n'), false)
+          )
+          .setTimestamp()
+      ],
+      components: [],
+      ephemeral: true
+    });
+  }
+
+  if (interaction.customId.startsWith('claninvite_accept:')) {
+    const [, clanToken, targetId] = interaction.customId.split(':');
+    const clanName = decodeClanToken(clanToken);
+
+    if (interaction.user.id !== targetId) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Invite Locked', 'Only the invited player can accept this clan invite.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    if (user.clan) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Already In Clan', `You are already in **${user.clan}**.`, EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    const inviteName = user.clanInvites.find(invite => invite.toLowerCase() === clanName.toLowerCase());
+    if (!inviteName) {
+      pendingClanInvites.delete(`${clanName}:${targetId}`);
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Invite Missing', 'This invite is no longer available.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    const existingClan = await User.findOne({ clan: inviteName });
+    if (!existingClan) {
+      user.clanInvites = user.clanInvites.filter(invite => invite !== inviteName);
+      await user.save();
+      pendingClanInvites.delete(`${clanName}:${targetId}`);
+      return interaction.update({
+        embeds: [interactionNoticeEmbed('Clan Missing', 'That clan no longer exists.', EMBED_COLORS.danger)],
+        components: []
+      });
+    }
+
+    const clanPerks = getClanLevelData(existingClan.clanLevel || 1).perks;
+    const memberCount = await User.countDocuments({ clan: existingClan.clan });
+    if (memberCount >= clanPerks.memberCap) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Clan Full', `**${existingClan.clan}** is full. Member cap: ${clanPerks.memberCap}.`, EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    user.clan = existingClan.clan;
+    user.clanRole = 'member';
+    user.clanPrivacy = existingClan.clanPrivacy || 'private';
+    user.clanInvites = user.clanInvites.filter(invite => invite !== inviteName);
+    user.clanLevel = existingClan.clanLevel || 1;
+    user.clanXp = existingClan.clanXp || 0;
+    await user.save();
+    pendingClanInvites.delete(`${existingClan.clan}:${targetId}`);
+
+    return interaction.update({
+      embeds: [
+        new EmbedBuilder()
+          .setColor(EMBED_COLORS.success)
+          .setTitle('Clan Invite Accepted')
+          .setDescription(`<@${interaction.user.id}> joined **${existingClan.clan}**.`)
+          .addFields(
+            field('Clan Level', user.clanLevel),
+            field('Privacy', user.clanPrivacy)
+          )
+          .setTimestamp()
+      ],
+      components: []
+    });
+  }
+
+  if (interaction.customId.startsWith('claninvite_decline:')) {
+    const [, clanToken, targetId] = interaction.customId.split(':');
+    const clanName = decodeClanToken(clanToken);
+
+    if (interaction.user.id !== targetId) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Invite Locked', 'Only the invited player can decline this clan invite.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    const inviteName = user.clanInvites.find(invite => invite.toLowerCase() === clanName.toLowerCase());
+    if (!inviteName) {
+      pendingClanInvites.delete(`${clanName}:${targetId}`);
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Invite Missing', 'This invite is no longer available.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    user.clanInvites = user.clanInvites.filter(invite => invite !== inviteName);
+    await user.save();
+    pendingClanInvites.delete(`${inviteName}:${targetId}`);
+
+    return interaction.update({
+      embeds: [
+        new EmbedBuilder()
+          .setColor(EMBED_COLORS.danger)
+          .setTitle('Clan Invite Declined')
+          .setDescription(`<@${interaction.user.id}> declined the invite to **${inviteName}**.`)
+          .setTimestamp()
+      ],
+      components: []
+    });
+  }
+
+  if (interaction.customId.startsWith('clanjoin_public:')) {
+    const [, clanToken] = interaction.customId.split(':');
+    const clanName = decodeClanToken(clanToken);
+
+    if (user.clan) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Already In Clan', `You are already in **${user.clan}**.`, EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    const existingClan = await User.findOne({ clan: clanName });
+    if (!existingClan) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Clan Missing', 'That clan no longer exists.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    if ((existingClan.clanPrivacy || 'private') !== 'public') {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Private Clan', 'This clan is private and requires an invite.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    const clanPerks = getClanLevelData(existingClan.clanLevel || 1).perks;
+    const memberCount = await User.countDocuments({ clan: existingClan.clan });
+    if (memberCount >= clanPerks.memberCap) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Clan Full', `**${existingClan.clan}** is full. Member cap: ${clanPerks.memberCap}.`, EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    user.clan = existingClan.clan;
+    user.clanRole = 'member';
+    user.clanPrivacy = existingClan.clanPrivacy || 'private';
+    user.clanInvites = user.clanInvites.filter(invite => invite !== existingClan.clan);
+    user.clanLevel = existingClan.clanLevel || 1;
+    user.clanXp = existingClan.clanXp || 0;
+    await user.save();
+    pendingClanInvites.delete(`${existingClan.clan}:${interaction.user.id}`);
+
+    return interaction.reply({
+      embeds: [
+        interactionNoticeEmbed('Clan Joined', `You joined **${existingClan.clan}**.`, EMBED_COLORS.success)
+      ],
+      ephemeral: true
+    });
+  }
+
+  if (interaction.customId.startsWith('clanprivacy_public:') || interaction.customId.startsWith('clanprivacy_private:')) {
+    const [action, clanToken, ownerId] = interaction.customId.split(':');
+    const clanName = decodeClanToken(clanToken);
+    const mode = action.endsWith('_public') ? 'public' : 'private';
+
+    if (interaction.user.id !== ownerId) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Owner Only', 'Only the clan owner can change clan privacy from this button.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    if (user.clan !== clanName || user.clanRole !== 'owner') {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Clan Changed', 'You are no longer the owner of this clan.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    await syncClanSettings(clanName, { clanPrivacy: mode });
+    user.clanPrivacy = mode;
+    await user.save();
+
+    return interaction.reply({
+      embeds: [
+        interactionNoticeEmbed('Clan Privacy Updated', `**${clanName}** is now **${mode}**.`, EMBED_COLORS.success)
+      ],
+      ephemeral: true
+    });
+  }
+
+  if (interaction.customId.startsWith('clanleave:')) {
+    const [, clanToken] = interaction.customId.split(':');
+    const clanName = decodeClanToken(clanToken);
+
+    if (user.clan !== clanName) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Clan Changed', 'You are not in that clan anymore.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    if (user.clanRole === 'owner') {
+      const otherMembers = await User.countDocuments({ clan: user.clan, userId: { $ne: user.userId } });
+      if (otherMembers > 0) {
+        return interaction.reply({ embeds: [interactionNoticeEmbed('Transfer First', 'Transfer ownership before leaving your clan.', EMBED_COLORS.danger)], ephemeral: true });
+      }
+    }
+
+    const oldClan = user.clan;
+    user.clan = null;
+    user.clanRole = null;
+    user.clanPrivacy = 'private';
+    user.clanLevel = 1;
+    user.clanXp = 0;
+    await user.save();
+
+    return interaction.reply({
+      embeds: [
+        interactionNoticeEmbed('Clan Left', `You left **${oldClan}**.`, EMBED_COLORS.success)
+      ],
+      ephemeral: true
+    });
   }
 
   if (interaction.customId.startsWith('clanwar_accept:')) {
@@ -2432,6 +3821,187 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 
+client.on('interactionCreate', async (interaction) => {
+  if (!interaction.isModalSubmit()) return;
+  if (!interaction.guild) {
+    return interaction.reply({ embeds: [interactionNoticeEmbed('Server Only', 'These forms can only be used inside a server.', EMBED_COLORS.danger)], ephemeral: true });
+  }
+
+  const guildConfig = await getGuildConfig(interaction.guild.id);
+  if (guildConfig.botChannelId && interaction.channelId !== guildConfig.botChannelId) {
+    return interaction.reply({ embeds: [interactionNoticeEmbed('Wrong Channel', `Use bot interactions in <#${guildConfig.botChannelId}>.`, EMBED_COLORS.danger)], ephemeral: true });
+  }
+
+  const user = await getUser(interaction.user.id);
+  removeExpiredBoosts(user);
+  const vaultInterest = applyVaultInterest(user);
+  if (vaultInterest.applied > 0) {
+    await user.save();
+  }
+
+  if (interaction.customId === 'modal_coinflip') {
+    const choice = interaction.fields.getTextInputValue('choice').trim().toLowerCase();
+    let bet = parseInt(interaction.fields.getTextInputValue('amount').trim(), 10);
+
+    if (!['heads', 'tails'].includes(choice)) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Invalid Choice', 'Choose `heads` or `tails`.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    const cd = cooldown(user, 'cf', 120000);
+    if (cd) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Cooldown Active', `Wait ${cd}s before using coinflip again.`, EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    if (!bet || bet <= 0) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Invalid Bet', 'Enter a valid amount to bet.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+    if (bet > user.aura) bet = user.aura;
+
+    const outcome = Math.random() > 0.5 ? 'heads' : 'tails';
+    const won = choice === outcome;
+    let auraWon = 0;
+    let xpWon = 0;
+    let clanXpWon = 0;
+
+    if (won) {
+      const auraResult = addAura(user, bet, 'aura');
+      const xpResult = addXp(user, 60);
+      const clanXpResult = await addClanXp(user.clan, 30);
+      xpResult.level = user.level;
+      auraWon = auraResult.reward;
+      xpWon = xpResult.reward;
+      clanXpWon = clanXpResult.gained || 0;
+    }
+
+    await user.save();
+    return interaction.reply({
+      embeds: [
+        new EmbedBuilder()
+          .setColor(won ? EMBED_COLORS.success : EMBED_COLORS.danger)
+          .setTitle('Coinflip')
+          .setDescription(`You chose **${choice}**. The coin landed on **${outcome}**.`)
+          .addFields(
+            field('Result', won ? 'Win' : 'Loss'),
+            field('Aura', won ? `+${auraWon}` : 'No reward'),
+            field('XP / Clan XP', won ? `+${xpWon} XP • +${clanXpWon} Clan XP` : 'No reward', false)
+          )
+          .setTimestamp()
+      ],
+      components: buildEconomyRows(user),
+      ephemeral: true
+    });
+  }
+
+  if (interaction.customId === 'modal_deposit') {
+    const amountArg = interaction.fields.getTextInputValue('amount').trim().toLowerCase();
+    const amount = amountArg === 'all' ? user.aura : parseInt(amountArg, 10);
+
+    if (!Number.isInteger(amount) || amount <= 0) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Invalid Amount', 'Enter a valid deposit amount.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+    if (amount > user.aura) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Not Enough Aura', "You don't have that much Aura in your wallet.", EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    user.aura -= amount;
+    user.vault += amount;
+    user.lastVaultInterest = Date.now();
+    updateRank(user);
+    await user.save();
+
+    return interaction.reply({
+      embeds: [
+        interactionNoticeEmbed('Vault Deposit', `Deposited ${amount} Aura into your vault.`, EMBED_COLORS.success)
+      ],
+      components: buildEconomyRows(user),
+      ephemeral: true
+    });
+  }
+
+  if (interaction.customId === 'modal_clan_create') {
+    const clanName = normalizeClanName(interaction.fields.getTextInputValue('name'));
+    if (!clanName) return interaction.reply({ embeds: [interactionNoticeEmbed('Clan Name Missing', 'Enter a clan name.', EMBED_COLORS.danger)], ephemeral: true });
+    if (!isValidClanName(clanName)) return interaction.reply({ embeds: [interactionNoticeEmbed('Invalid Clan Name', 'Clan names must be 3-20 characters and use only letters, numbers, and spaces.', EMBED_COLORS.danger)], ephemeral: true });
+    if (user.clan) return interaction.reply({ embeds: [interactionNoticeEmbed('Already In Clan', `You are already in **${user.clan}**.`, EMBED_COLORS.danger)], ephemeral: true });
+    if (user.aura < CLAN_CREATE_COST) return interaction.reply({ embeds: [interactionNoticeEmbed('Not Enough Aura', `You need ${CLAN_CREATE_COST} Aura to create a clan.`, EMBED_COLORS.danger)], ephemeral: true });
+
+    const existingClan = await User.findOne({ clan: new RegExp(`^${clanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') });
+    if (existingClan) return interaction.reply({ embeds: [interactionNoticeEmbed('Clan Name Taken', 'That clan name is already taken.', EMBED_COLORS.danger)], ephemeral: true });
+
+    user.aura -= CLAN_CREATE_COST;
+    user.clan = clanName;
+    user.clanRole = 'owner';
+    user.clanPrivacy = 'private';
+    user.clanInvites = [];
+    user.clanLevel = 1;
+    user.clanXp = 0;
+    updateRank(user);
+    await user.save();
+
+    return interaction.reply({
+      embeds: [
+        new EmbedBuilder()
+          .setColor(EMBED_COLORS.success)
+          .setTitle(`Clan Created: ${clanName}`)
+          .setDescription(`Your clan is live and ${CLAN_CREATE_COST} Aura has been spent.`)
+          .addFields(
+            field('Owner', `<@${user.userId}>`),
+            field('Clan Level', user.clanLevel),
+            field('Privacy', user.clanPrivacy),
+            field('Member Cap', getClanLevelData(user.clanLevel).perks.memberCap),
+            field('Wallet Left', user.aura)
+          )
+          .setTimestamp()
+      ],
+      components: [buildClanRenameRow()],
+      ephemeral: true
+    });
+  }
+
+  if (interaction.customId === 'modal_clan_rename') {
+    if (!user.clan) return interaction.reply({ embeds: [interactionNoticeEmbed('No Clan', 'You are not in a clan.', EMBED_COLORS.danger)], ephemeral: true });
+    if (user.clanRole !== 'owner') return interaction.reply({ embeds: [interactionNoticeEmbed('Owner Only', 'Only the clan owner can rename the clan.', EMBED_COLORS.danger)], ephemeral: true });
+
+    const newClanName = normalizeClanName(interaction.fields.getTextInputValue('name'));
+    if (!newClanName) return interaction.reply({ embeds: [interactionNoticeEmbed('Clan Name Missing', 'Enter a new clan name.', EMBED_COLORS.danger)], ephemeral: true });
+    if (!isValidClanName(newClanName)) return interaction.reply({ embeds: [interactionNoticeEmbed('Invalid Clan Name', 'Clan names must be 3-20 characters and use only letters, numbers, and spaces.', EMBED_COLORS.danger)], ephemeral: true });
+    if (newClanName.toLowerCase() === user.clan.toLowerCase()) return interaction.reply({ embeds: [interactionNoticeEmbed('Same Name', 'That is already your clan name.', EMBED_COLORS.danger)], ephemeral: true });
+    if (getActiveClanWar(user.clan) || hasPendingClanWar(user.clan) || getActiveClanBossRaid(user.clan)) {
+      return interaction.reply({ embeds: [interactionNoticeEmbed('Clan Busy', 'Finish active clan wars, pending clan wars, and clan raids before renaming the clan.', EMBED_COLORS.danger)], ephemeral: true });
+    }
+
+    const oldClanName = user.clan;
+    const existingClan = await User.findOne({ clan: new RegExp(`^${newClanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') });
+    if (existingClan) return interaction.reply({ embeds: [interactionNoticeEmbed('Clan Name Taken', 'That clan name is already taken.', EMBED_COLORS.danger)], ephemeral: true });
+
+    await User.updateMany({ clan: oldClanName }, { $set: { clan: newClanName } });
+
+    const invitedUsers = await User.find({ clanInvites: oldClanName });
+    for (const invitedUser of invitedUsers) {
+      invitedUser.clanInvites = invitedUser.clanInvites.map(invite => invite === oldClanName ? newClanName : invite);
+      await invitedUser.save();
+    }
+
+    for (const [key, invite] of pendingClanInvites.entries()) {
+      if (invite.clanName === oldClanName) {
+        pendingClanInvites.delete(key);
+        pendingClanInvites.set(`${newClanName}:${invite.targetId}`, { ...invite, clanName: newClanName });
+      }
+    }
+
+    user.clan = newClanName;
+    await user.save();
+
+    return interaction.reply({
+      embeds: [
+        interactionNoticeEmbed('Clan Renamed', `Your clan is now **${newClanName}**.`, EMBED_COLORS.success)
+      ],
+      components: [buildClanRenameRow()],
+      ephemeral: true
+    });
+  }
+});
+
 // ================= EXPRESS WEB =================
 const app = express();
 app.get('/', (req, res) => res.send('Bot running'));
@@ -2442,9 +4012,32 @@ app.get('/api/leaderboard', async (req, res) => {
 app.listen(3000, () => console.log('Web API running on port 3000'));
 
 // ================= READY =================
+client.on('guildCreate', async (guild) => {
+  try {
+    await getGuildConfig(guild.id);
+
+    const targetChannel =
+      guild.systemChannel ||
+      guild.channels.cache.find(channel => channel.isTextBased?.() && channel.permissionsFor(guild.members.me)?.has(PermissionsBitField.Flags.SendMessages));
+
+    if (!targetChannel) return;
+
+    await targetChannel.send({
+      embeds: [
+        new EmbedBuilder()
+          .setColor(EMBED_COLORS.info)
+          .setTitle('Setup Required')
+          .setDescription('Run `!setup #channel` to choose the only channel where I will respond. If you run `!setup` without tagging a channel, I will use the current one.')
+          .setTimestamp()
+      ]
+    });
+  } catch (error) {
+    console.error('Failed to send guild setup message:', error);
+  }
+});
+
 client.once('clientReady', () => {
   console.log(`Logged in as ${client.user.tag}`);
 });
 
 client.login(process.env.TOKEN);
-
