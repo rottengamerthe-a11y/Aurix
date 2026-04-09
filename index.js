@@ -7,13 +7,27 @@ const { Resvg } = require('@resvg/resvg-js');
 const mongoose = require('mongoose');
 const express = require('express');
 
-const requiredEnvVars = ['TOKEN', 'MONGO_URI'];
-const missingEnvVars = requiredEnvVars.filter((key) => !process.env[key]);
+function getEnvValue(...keys) {
+  for (const key of keys) {
+    const value = process.env[key];
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+  return '';
+}
+
+const DISCORD_TOKEN = getEnvValue('TOKEN', 'DISCORD_TOKEN', 'BOT_TOKEN');
+const MONGO_URI = getEnvValue('MONGO_URI', 'MONGODB_URI', 'DATABASE_URL');
 const PORT = Number(process.env.PORT) || 3000;
+const missingEnvVars = [];
+
+if (!DISCORD_TOKEN) missingEnvVars.push('TOKEN or DISCORD_TOKEN');
+if (!MONGO_URI) missingEnvVars.push('MONGO_URI or MONGODB_URI');
 
 if (missingEnvVars.length > 0) {
   console.error(`Missing required environment variables: ${missingEnvVars.join(', ')}`);
-  console.error('Create a .env file in the project root before starting the bot.');
+  console.error('Set them either in a local .env file or in your Render Environment settings.');
   process.exit(1);
 }
 
@@ -26,7 +40,7 @@ process.on('uncaughtException', (error) => {
 });
 
 // ================= DATABASE =================
-mongoose.connect(process.env.MONGO_URI)
+mongoose.connect(MONGO_URI)
   .then(() => console.log('MongoDB Connected'))
   .catch(console.error);
 
@@ -4449,4 +4463,4 @@ client.once('clientReady', () => {
   console.log(`Logged in as ${client.user.tag}`);
 });
 
-client.login(process.env.TOKEN);
+client.login(DISCORD_TOKEN);
