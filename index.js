@@ -143,6 +143,7 @@ let pendingClanWars = new Map();
 let activeClanWars = new Map();
 let activeBossBattles = new Map();
 let activeClanBossRaids = new Map();
+let loggedMissingMessageContentWarning = false;
 
 const VAULT_INTEREST_RATE = 0.02;
 const VAULT_INTEREST_INTERVAL = 24 * 60 * 60 * 1000;
@@ -517,74 +518,86 @@ function getLocalVisualAttachment(key) {
 
   const filePath = path.join(VISUAL_ASSET_DIR, filename);
   if (!fs.existsSync(filePath)) return null;
+  try {
+    const thumbnailFilename = LOCAL_VISUAL_THUMBNAILS[key] || filename;
+    const thumbnailPath = path.join(VISUAL_ASSET_DIR, thumbnailFilename);
+    const svg = fs.readFileSync(filePath, 'utf8');
+    const thumbnailSvg = fs.existsSync(thumbnailPath) ? fs.readFileSync(thumbnailPath, 'utf8') : svg;
+    const pngName = filename.replace(/\.svg$/i, '.png');
+    const thumbnailName = `thumb-${thumbnailFilename.replace(/\.svg$/i, '.png')}`;
+    const resvg = new Resvg(svg, {
+      fitTo: {
+        mode: 'width',
+        value: 1200
+      }
+    });
+    const thumbnailResvg = new Resvg(thumbnailSvg, {
+      fitTo: {
+        mode: 'width',
+        value: 256
+      }
+    });
+    const png = resvg.render().asPng();
+    const thumbnailPng = thumbnailResvg.render().asPng();
 
-  const thumbnailFilename = LOCAL_VISUAL_THUMBNAILS[key] || filename;
-  const thumbnailPath = path.join(VISUAL_ASSET_DIR, thumbnailFilename);
-  const svg = fs.readFileSync(filePath, 'utf8');
-  const thumbnailSvg = fs.existsSync(thumbnailPath) ? fs.readFileSync(thumbnailPath, 'utf8') : svg;
-  const pngName = filename.replace(/\.svg$/i, '.png');
-  const thumbnailName = `thumb-${thumbnailFilename.replace(/\.svg$/i, '.png')}`;
-  const resvg = new Resvg(svg, {
-    fitTo: {
-      mode: 'width',
-      value: 1200
-    }
-  });
-  const thumbnailResvg = new Resvg(thumbnailSvg, {
-    fitTo: {
-      mode: 'width',
-      value: 256
-    }
-  });
-  const png = resvg.render().asPng();
-  const thumbnailPng = thumbnailResvg.render().asPng();
-
-  return {
-    name: pngName,
-    thumbnailName,
-    file: new AttachmentBuilder(png, { name: pngName }),
-    thumbnailFile: new AttachmentBuilder(thumbnailPng, { name: thumbnailName })
-  };
+    return {
+      name: pngName,
+      thumbnailName,
+      file: new AttachmentBuilder(png, { name: pngName }),
+      thumbnailFile: new AttachmentBuilder(thumbnailPng, { name: thumbnailName })
+    };
+  } catch (error) {
+    console.error(`Failed to render local visual "${key}":`, error);
+    return null;
+  }
 }
 
 function getThemeEmblemAttachment(theme = 'default') {
   const emblemFilename = THEME_EMBLEM_FILES[theme] || THEME_EMBLEM_FILES.default;
   const emblemPath = path.join(VISUAL_ASSET_DIR, emblemFilename);
   if (!fs.existsSync(emblemPath)) return null;
+  try {
+    const svg = fs.readFileSync(emblemPath, 'utf8');
+    const pngName = `theme-${theme}.png`;
+    const resvg = new Resvg(svg, {
+      fitTo: {
+        mode: 'width',
+        value: 256
+      }
+    });
 
-  const svg = fs.readFileSync(emblemPath, 'utf8');
-  const pngName = `theme-${theme}.png`;
-  const resvg = new Resvg(svg, {
-    fitTo: {
-      mode: 'width',
-      value: 256
-    }
-  });
-
-  return {
-    name: pngName,
-    file: new AttachmentBuilder(resvg.render().asPng(), { name: pngName })
-  };
+    return {
+      name: pngName,
+      file: new AttachmentBuilder(resvg.render().asPng(), { name: pngName })
+    };
+  } catch (error) {
+    console.error(`Failed to render theme emblem "${theme}":`, error);
+    return null;
+  }
 }
 
 function getThemeBannerAttachment(theme = 'default') {
   const bannerFilename = THEME_BANNER_FILES[theme] || THEME_BANNER_FILES.default;
   const bannerPath = path.join(VISUAL_ASSET_DIR, bannerFilename);
   if (!fs.existsSync(bannerPath)) return null;
+  try {
+    const svg = fs.readFileSync(bannerPath, 'utf8');
+    const pngName = `banner-${theme}.png`;
+    const resvg = new Resvg(svg, {
+      fitTo: {
+        mode: 'width',
+        value: 1200
+      }
+    });
 
-  const svg = fs.readFileSync(bannerPath, 'utf8');
-  const pngName = `banner-${theme}.png`;
-  const resvg = new Resvg(svg, {
-    fitTo: {
-      mode: 'width',
-      value: 1200
-    }
-  });
-
-  return {
-    name: pngName,
-    file: new AttachmentBuilder(resvg.render().asPng(), { name: pngName })
-  };
+    return {
+      name: pngName,
+      file: new AttachmentBuilder(resvg.render().asPng(), { name: pngName })
+    };
+  } catch (error) {
+    console.error(`Failed to render theme banner "${theme}":`, error);
+    return null;
+  }
 }
 
 function withLocalVisual(embed, key) {
@@ -1652,41 +1665,60 @@ client.on('messageCreate', async (message) => {
   wrapReplyMethod(message, 'reply');
   if (message.author.bot) return;
   if (!message.guild) return;
-
-  const isSetupCommand = message.content.toLowerCase().startsWith('!setup');
-  const guildConfig = await getGuildConfig(message.guild.id);
-
-  if (isSetupCommand) {
-    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
-      return message.reply({ embeds: [warningEmbed(message, 'Missing Permission', 'You need the `Manage Server` permission to set the bot channel.')] });
+  if (!message.content) {
+    if (!loggedMissingMessageContentWarning) {
+      loggedMissingMessageContentWarning = true;
+      console.warn('Received a guild message with empty content. If prefix commands are not working, enable Message Content Intent for this bot in the Discord Developer Portal and redeploy.');
     }
-
-    const selectedChannel = message.mentions.channels.first() || message.channel;
-    if (!selectedChannel.isTextBased() || !selectedChannel.permissionsFor(message.guild.members.me)?.has(PermissionsBitField.Flags.SendMessages)) {
-      return message.reply({ embeds: [warningEmbed(message, 'Invalid Channel', 'Choose a text channel where I have permission to send messages.')] });
-    }
-
-    guildConfig.botChannelId = selectedChannel.id;
-    await guildConfig.save();
-
-    return message.reply({
-      embeds: [
-        createEmbed(message, 'Setup Complete', EMBED_COLORS.success)
-          .setDescription(`Bot commands are now locked to <#${selectedChannel.id}>.\nUse \`!setup #channel\` again any time to move them.`)
-      ]
-    });
-  }
-
-  if (guildConfig.botChannelId && message.channelId !== guildConfig.botChannelId) {
     return;
   }
 
-  const user = await getUser(message.author.id);
-  removeExpiredBoosts(user);
-  const vaultInterest = applyVaultInterest(user);
-  if (vaultInterest.applied > 0) {
-    await user.save();
-  }
+  try {
+    const isSetupCommand = message.content.toLowerCase().startsWith('!setup');
+    const guildConfig = await getGuildConfig(message.guild.id);
+
+    if (isSetupCommand) {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
+        return message.reply({ embeds: [warningEmbed(message, 'Missing Permission', 'You need the `Manage Server` permission to set the bot channel.')] });
+      }
+
+      const selectedChannel = message.mentions.channels.first() || message.channel;
+      if (!selectedChannel.isTextBased() || !selectedChannel.permissionsFor(message.guild.members.me)?.has(PermissionsBitField.Flags.SendMessages)) {
+        return message.reply({ embeds: [warningEmbed(message, 'Invalid Channel', 'Choose a text channel where I have permission to send messages.')] });
+      }
+
+      guildConfig.botChannelId = selectedChannel.id;
+      await guildConfig.save();
+
+      return message.reply({
+        embeds: [
+          createEmbed(message, 'Setup Complete', EMBED_COLORS.success)
+            .setDescription(`Bot commands are now locked to <#${selectedChannel.id}>.\nUse \`!setup #channel\` again any time to move them.`)
+        ]
+      });
+    }
+
+    if (guildConfig.botChannelId && message.channelId !== guildConfig.botChannelId) {
+      if (message.content.startsWith('!')) {
+        return message.reply({
+          embeds: [
+            warningEmbed(
+              message,
+              'Wrong Channel',
+              `Use bot commands in <#${guildConfig.botChannelId}> or run \`!setup\` there to move the bot channel.`
+            )
+          ]
+        });
+      }
+      return;
+    }
+
+    const user = await getUser(message.author.id);
+    removeExpiredBoosts(user);
+    const vaultInterest = applyVaultInterest(user);
+    if (vaultInterest.applied > 0) {
+      await user.save();
+    }
 
   if (message.content.startsWith('!help')) {
     const helpArg = (message.content.split(' ')[1] || '').toLowerCase();
@@ -2903,6 +2935,23 @@ client.on('messageCreate', async (message) => {
         field('Boosts', activeBoostSummary(user), false)
       );
     return message.reply(visualReplyOptions(embed, getCoreVisualKey(embed.data.title)));
+  }
+  } catch (error) {
+    console.error(`messageCreate handler failed for guild ${message.guild?.id} channel ${message.channelId} user ${message.author?.id}:`, error);
+    if (!message.channel) return;
+    try {
+      await message.reply({
+        embeds: [
+          warningEmbed(
+            message,
+            'Command Error',
+            'Something went wrong while processing that command. Check the Render logs for the detailed error.'
+          )
+        ]
+      });
+    } catch (replyError) {
+      console.error('Failed to send command error reply:', replyError);
+    }
   }
 });
 
