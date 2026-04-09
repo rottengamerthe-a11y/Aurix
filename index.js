@@ -632,13 +632,23 @@ function decorateReplyPayload(payload) {
 }
 
 function wrapReplyMethod(target, methodName) {
-  if (!target || typeof target[methodName] !== 'function') return;
-  if (target[methodName].__auraVisualWrapped) return;
+  try {
+    if (!target || typeof target[methodName] !== 'function') return;
+    if (target[methodName].__auraVisualWrapped) return;
 
-  const original = target[methodName].bind(target);
-  const wrapped = (payload, ...rest) => original(decorateReplyPayload(payload), ...rest);
-  wrapped.__auraVisualWrapped = true;
-  target[methodName] = wrapped;
+    const descriptor =
+      Object.getOwnPropertyDescriptor(target, methodName) ||
+      Object.getOwnPropertyDescriptor(Object.getPrototypeOf(target), methodName);
+
+    if (descriptor && descriptor.writable === false && !descriptor.set) return;
+
+    const original = target[methodName].bind(target);
+    const wrapped = (payload, ...rest) => original(decorateReplyPayload(payload), ...rest);
+    wrapped.__auraVisualWrapped = true;
+    target[methodName] = wrapped;
+  } catch {
+    return;
+  }
 }
 
 function getHelpVisualKey(sectionKey = '') {
