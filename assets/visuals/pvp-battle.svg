@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#111827"/>
+      <stop offset="100%" stop-color="#7c2d12"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="1200" height="420" fill="url(#bg)"/>
+  <circle cx="835" cy="210" r="125" fill="#f97316" opacity="0.18" filter="url(#glow)"/>
+  <circle cx="1035" cy="210" r="125" fill="#fb7185" opacity="0.18" filter="url(#glow)"/>
+  <rect x="48" y="46" width="1104" height="328" rx="28" fill="none" stroke="#fdba74" stroke-opacity="0.28" stroke-width="2.5" filter="url(#glow)"/>
+  <path d="M792 116l38 20-58 110-38-20z" fill="#ffedd5" opacity="0.88" filter="url(#glow)"/>
+  <path d="M1078 116l-38 20 58 110 38-20z" fill="#ffe4e6" opacity="0.88" filter="url(#glow)"/>
+  <path d="M894 130l14 26 30 4-22 20 5 30-27-14-27 14 5-30-22-20 30-4z" fill="#fef3c7" opacity="0.92" filter="url(#glow)"/>
+  <path d="M874 270c22-18 52-18 74 0" fill="none" stroke="#fdba74" stroke-width="6" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M950 270c22-18 52-18 74 0" fill="none" stroke="#fda4af" stroke-width="6" stroke-linecap="round" filter="url(#glow)"/>
+  <text x="90" y="145" fill="#fff7ed" font-size="64" font-family="Segoe UI, Arial, sans-serif" font-weight="700" filter="url(#glow)">PvP Arena</text>
+  <text x="90" y="198" fill="#fed7aa" font-size="28" font-family="Segoe UI, Arial, sans-serif">
+    <tspan x="90" dy="0">Attack, defend, heal,</tspan>
+    <tspan x="90" dy="34">or spend your one critical strike.</tspan>
+  </text>
+</svg>

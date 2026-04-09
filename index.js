@@ -1,6 +1,7 @@
 ﻿require('dotenv').config();
 
-const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, PermissionsBitField, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const path = require('path');
+const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, PermissionsBitField, ModalBuilder, TextInputBuilder, TextInputStyle, AttachmentBuilder } = require('discord.js');
 const mongoose = require('mongoose');
 const express = require('express');
 
@@ -157,12 +158,14 @@ const BOOST_LABELS = {
 
 const SHOP_ITEMS = {
   crate: {
+    emoji: '📦',
     name: 'Crate',
     price: 2000,
     maxOwned: 25,
     description: 'Open it with !open for a random Aura reward.'
   },
   auraboost: {
+    emoji: '🔥',
     name: 'Aura Boost',
     price: 15000,
     boostKey: 'aura',
@@ -172,6 +175,7 @@ const SHOP_ITEMS = {
     description: 'Use !use auraboost to double Aura rewards for 1 hour.'
   },
   dailyboost: {
+    emoji: '🌞',
     name: 'Daily Boost',
     price: 20000,
     boostKey: 'daily',
@@ -181,6 +185,7 @@ const SHOP_ITEMS = {
     description: 'Use !use dailyboost to double daily rewards for 24 hours.'
   },
   luckboost: {
+    emoji: '🍀',
     name: 'Luck Boost',
     price: 12000,
     boostKey: 'crate',
@@ -190,6 +195,7 @@ const SHOP_ITEMS = {
     description: 'Use !use luckboost to increase crate rewards by 50% for 1 hour.'
   },
   xpboost: {
+    emoji: '✨',
     name: 'XP Boost',
     price: 18000,
     boostKey: 'xp',
@@ -321,19 +327,175 @@ const EMBED_COLORS = {
   royal: 0x8b5cf6
 };
 
-function createEmbed(message, title, color = EMBED_COLORS.primary) {
-  return new EmbedBuilder()
+const VISUAL_ASSET_DIR = path.join(__dirname, 'assets', 'visuals');
+const LOCAL_VISUALS = {
+  help_summary: 'help-summary.svg',
+  help_core: 'help-core.svg',
+  help_skills: 'help-skills.svg',
+  help_clans: 'help-clans.svg',
+  help_bosses: 'help-bosses.svg',
+  clan_hall: 'clan-hall.svg',
+  clan_war: 'clan-war.svg',
+  clan_top: 'clan-top.svg',
+  pvp_challenge: 'pvp-challenge.svg',
+  pvp_battle: 'pvp-battle.svg',
+  pvp_victory: 'pvp-victory.svg',
+  boss_codex: 'boss-codex.svg',
+  boss_ember: 'boss-ember.svg',
+  boss_warden: 'boss-warden.svg',
+  boss_oracle: 'boss-oracle.svg'
+};
+
+const VISUAL_THEME_LIBRARY = {
+  default: {
+    thumbnail: process.env.VISUAL_DEFAULT_THUMBNAIL || 'https://dummyimage.com/256x256/111827/f59e0b.png&text=Aura',
+    banner: process.env.VISUAL_DEFAULT_BANNER || 'https://dummyimage.com/1200x360/111827/f59e0b.png&text=Aura+Realms'
+  },
+  help: {
+    thumbnail: process.env.VISUAL_HELP_THUMBNAIL || 'https://dummyimage.com/256x256/0f172a/38bdf8.png&text=Help',
+    banner: process.env.VISUAL_HELP_BANNER || 'https://dummyimage.com/1200x360/0f172a/38bdf8.png&text=Help+Center',
+    animation: process.env.VISUAL_HELP_ANIMATION || null
+  },
+  economy: {
+    thumbnail: process.env.VISUAL_ECONOMY_THUMBNAIL || 'https://dummyimage.com/256x256/052e16/22c55e.png&text=Aura',
+    banner: process.env.VISUAL_ECONOMY_BANNER || 'https://dummyimage.com/1200x360/052e16/22c55e.png&text=Economy+Hub',
+    animation: process.env.VISUAL_ECONOMY_ANIMATION || null
+  },
+  skills: {
+    thumbnail: process.env.VISUAL_SKILLS_THUMBNAIL || 'https://dummyimage.com/256x256/312e81/a78bfa.png&text=Skills',
+    banner: process.env.VISUAL_SKILLS_BANNER || 'https://dummyimage.com/1200x360/312e81/a78bfa.png&text=Skill+Tree',
+    animation: process.env.VISUAL_SKILLS_ANIMATION || null
+  },
+  clans: {
+    thumbnail: process.env.VISUAL_CLANS_THUMBNAIL || 'https://dummyimage.com/256x256/3f1d2e/f472b6.png&text=Clan',
+    banner: process.env.VISUAL_CLANS_BANNER || 'https://dummyimage.com/1200x360/3f1d2e/f472b6.png&text=Clan+Hall',
+    animation: process.env.VISUAL_CLANS_ANIMATION || null
+  },
+  bosses: {
+    thumbnail: process.env.VISUAL_BOSSES_THUMBNAIL || 'https://dummyimage.com/256x256/3f0d0d/ef4444.png&text=Boss',
+    banner: process.env.VISUAL_BOSSES_BANNER || 'https://dummyimage.com/1200x360/3f0d0d/ef4444.png&text=Boss+Encounter',
+    animation: process.env.VISUAL_BOSSES_ANIMATION || null
+  },
+  pvp: {
+    thumbnail: process.env.VISUAL_PVP_THUMBNAIL || 'https://dummyimage.com/256x256/450a0a/f97316.png&text=PvP',
+    banner: process.env.VISUAL_PVP_BANNER || 'https://dummyimage.com/1200x360/450a0a/f97316.png&text=PvP+Arena',
+    animation: process.env.VISUAL_PVP_ANIMATION || null
+  },
+  success: {
+    thumbnail: process.env.VISUAL_SUCCESS_THUMBNAIL || 'https://dummyimage.com/256x256/052e16/86efac.png&text=Win',
+    banner: process.env.VISUAL_SUCCESS_BANNER || 'https://dummyimage.com/1200x360/052e16/86efac.png&text=Victory',
+    animation: process.env.VISUAL_SUCCESS_ANIMATION || null
+  },
+  alert: {
+    thumbnail: process.env.VISUAL_ALERT_THUMBNAIL || 'https://dummyimage.com/256x256/450a0a/fca5a5.png&text=Alert',
+    banner: process.env.VISUAL_ALERT_BANNER || 'https://dummyimage.com/1200x360/450a0a/fca5a5.png&text=System+Alert',
+    animation: process.env.VISUAL_ALERT_ANIMATION || null
+  }
+};
+
+function pickVisualTheme(title = '', description = '') {
+  const content = `${title} ${description}`.toLowerCase();
+
+  if (content.includes('help')) return 'help';
+  if (content.includes('boss') || content.includes('raid')) return 'bosses';
+  if (content.includes('clan')) return 'clans';
+  if (content.includes('skill') || content.includes('shop') || content.includes('crate') || content.includes('boost')) return 'skills';
+  if (content.includes('pvp') || content.includes('duel') || content.includes('battle')) return 'pvp';
+  if (content.includes('warning') || content.includes('invalid') || content.includes('cooldown') || content.includes('alert')) return 'alert';
+  if (content.includes('daily') || content.includes('vault') || content.includes('rank') || content.includes('level') || content.includes('balance') || content.includes('leaderboard') || content.includes('inventory') || content.includes('stats') || content.includes('coinflip') || content.includes('spin')) return 'economy';
+  if (content.includes('complete') || content.includes('joined') || content.includes('accepted') || content.includes('activated') || content.includes('victory') || content.includes('won') || content.includes('reward')) return 'success';
+
+  return 'default';
+}
+
+function applyEmbedVisuals(embed, { title = '', description = '', theme = null, animated = true } = {}) {
+  const selectedTheme = VISUAL_THEME_LIBRARY[theme || pickVisualTheme(title, description)] || VISUAL_THEME_LIBRARY.default;
+  const heroImage = animated ? (selectedTheme.animation || selectedTheme.banner) : selectedTheme.banner;
+
+  if (selectedTheme.thumbnail) {
+    embed.setThumbnail(selectedTheme.thumbnail);
+  }
+
+  if (heroImage) {
+    embed.setImage(heroImage);
+  }
+
+  return embed;
+}
+
+function getLocalVisualAttachment(key) {
+  const filename = LOCAL_VISUALS[key];
+  if (!filename) return null;
+
+  return {
+    name: filename,
+    file: new AttachmentBuilder(path.join(VISUAL_ASSET_DIR, filename), { name: filename })
+  };
+}
+
+function withLocalVisual(embed, key) {
+  const attachment = getLocalVisualAttachment(key);
+  if (!attachment) {
+    return { embed, files: [] };
+  }
+
+  const url = `attachment://${attachment.name}`;
+  embed.setImage(url);
+  embed.setThumbnail(url);
+  return { embed, files: [attachment.file] };
+}
+
+function visualReplyOptions(embed, key, extras = {}) {
+  const { files } = withLocalVisual(embed, key);
+  const payload = { embeds: [embed], ...extras };
+
+  if (files.length > 0) {
+    payload.files = files;
+  }
+
+  return payload;
+}
+
+function getHelpVisualKey(sectionKey = '') {
+  if (!sectionKey) return 'help_summary';
+  return `help_${sectionKey}`;
+}
+
+function getBossVisualKey(boss) {
+  return boss?.key ? `boss_${boss.key}` : 'boss_codex';
+}
+
+function getClanVisualKey(title = '') {
+  const normalized = title.toLowerCase();
+
+  if (normalized.includes('war')) return 'clan_war';
+  if (normalized.includes('top')) return 'clan_top';
+  return 'clan_hall';
+}
+
+function getPvpVisualKey(title = '') {
+  const normalized = title.toLowerCase();
+
+  if (normalized.includes('victory')) return 'pvp_victory';
+  if (normalized.includes('challenge')) return 'pvp_challenge';
+  return 'pvp_battle';
+}
+
+function createEmbed(message, title, color = EMBED_COLORS.primary, options = {}) {
+  const embed = new EmbedBuilder()
     .setColor(color)
     .setTitle(title)
     .setFooter({ text: `${message.author.username} • Aura Realms` })
     .setTimestamp();
+
+  return applyEmbedVisuals(embed, { title, theme: options.theme, animated: options.animated !== false });
 }
 
 function field(name, value, inline = true) {
   return { name, value: String(value), inline };
 }
 
-function combatEmbed(title, color, description, fields = []) {
+function combatEmbed(title, color, description, fields = [], options = {}) {
   const embed = new EmbedBuilder()
     .setColor(color)
     .setTitle(title)
@@ -344,11 +506,11 @@ function combatEmbed(title, color, description, fields = []) {
     embed.addFields(fields);
   }
 
-  return embed;
+  return applyEmbedVisuals(embed, { title, description, theme: options.theme, animated: options.animated !== false });
 }
 
 function warningEmbed(message, title, description) {
-  return createEmbed(message, title, EMBED_COLORS.danger).setDescription(description);
+  return createEmbed(message, title, EMBED_COLORS.danger, { theme: 'alert' }).setDescription(description);
 }
 
 function infoEmbed(message, title, description) {
@@ -356,11 +518,13 @@ function infoEmbed(message, title, description) {
 }
 
 function interactionNoticeEmbed(title, description, color = EMBED_COLORS.info) {
-  return new EmbedBuilder()
+  const embed = new EmbedBuilder()
     .setColor(color)
     .setTitle(title)
     .setDescription(description)
     .setTimestamp();
+
+  return applyEmbedVisuals(embed, { title, description });
 }
 
 function cooldown(user, key, time) {
@@ -643,7 +807,7 @@ function inventorySummary(user) {
   }
 
   return Object.entries(counts)
-    .map(([item, count]) => `${item} x${count}`)
+    .map(([item, count]) => `${getItemDisplayName(item)} x${count}`)
     .join(', ');
 }
 
@@ -654,6 +818,15 @@ function activeBoostSummary(user) {
     .map(([key, boost]) => `${BOOST_LABELS[key] || key} x${boost.multiplier} (${formatDuration(boost.expiresAt - Date.now())} left)`);
 
   return active.length > 0 ? active.join(', ') : 'No active boosts';
+}
+
+function findShopItemByName(itemName) {
+  return Object.values(SHOP_ITEMS).find(item => item.name === itemName) || null;
+}
+
+function getItemDisplayName(itemName) {
+  const item = findShopItemByName(itemName);
+  return item?.emoji ? `${item.emoji} ${item.name}` : itemName;
 }
 
 function formatProgressExtras(xpResult) {
@@ -832,11 +1005,11 @@ function buildHelpSectionEmbed(message, section) {
 
 function buildShopRow() {
   return new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('shop_buy:crate').setLabel('Buy Crate').setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId('shop_buy:auraboost').setLabel('Buy Aura').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('shop_buy:dailyboost').setLabel('Buy Daily').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('shop_buy:luckboost').setLabel('Buy Luck').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('shop_buy:xpboost').setLabel('Buy XP').setStyle(ButtonStyle.Secondary)
+    new ButtonBuilder().setCustomId('shop_buy:crate').setLabel('📦 Crate').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId('shop_buy:auraboost').setLabel('🔥 Aura').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('shop_buy:dailyboost').setLabel('🌞 Daily').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('shop_buy:luckboost').setLabel('🍀 Luck').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('shop_buy:xpboost').setLabel('✨ XP').setStyle(ButtonStyle.Secondary)
   );
 }
 
@@ -844,7 +1017,7 @@ function buildInventoryRow(user) {
   const buttons = [];
 
   if (hasItem(user, 'Crate')) {
-    buttons.push(new ButtonBuilder().setCustomId('item_open_crate').setLabel('Open Crate').setStyle(ButtonStyle.Primary));
+    buttons.push(new ButtonBuilder().setCustomId('item_open_crate').setLabel('📦 Open Crate').setStyle(ButtonStyle.Primary));
   }
 
   for (const [itemKey, item] of Object.entries(SHOP_ITEMS)) {
@@ -854,7 +1027,7 @@ function buildInventoryRow(user) {
     buttons.push(
       new ButtonBuilder()
         .setCustomId(`item_use:${itemKey}`)
-        .setLabel(`Use ${item.name}`)
+        .setLabel(`Use ${item.emoji} ${item.name}`)
         .setStyle(ButtonStyle.Success)
         .setDisabled(isBoostActive(user, item.boostKey))
     );
@@ -1292,14 +1465,14 @@ client.on('messageCreate', async (message) => {
     const selectedSection = categories.find(category => category.key === helpArg);
 
     if (!helpArg) {
-      return message.reply({ embeds: [buildHelpSummaryEmbed(message)], components: [buildHelpRow()] });
+      return message.reply(visualReplyOptions(buildHelpSummaryEmbed(message), getHelpVisualKey(), { components: [buildHelpRow()] }));
     }
 
     if (!selectedSection) {
       return message.reply({ embeds: [warningEmbed(message, 'Unknown Help Section', 'Use `!help`, `!help core`, `!help skills`, `!help clans`, or `!help bosses`.')] });
     }
 
-    return message.reply({ embeds: [buildHelpSectionEmbed(message, selectedSection)], components: [buildHelpRow()] });
+    return message.reply(visualReplyOptions(buildHelpSectionEmbed(message, selectedSection), getHelpVisualKey(selectedSection.key), { components: [buildHelpRow()] }));
   }
 
   if (message.content === '!spin') {
@@ -1397,7 +1570,7 @@ client.on('messageCreate', async (message) => {
     const embed = createEmbed(message, 'PvP Challenge', EMBED_COLORS.danger)
       .setDescription(`<@${message.author.id}> challenged <@${targetUser.id}> to a duel.`);
 
-    return message.reply({ embeds: [embed], components: [row] });
+    return message.reply(visualReplyOptions(embed, getPvpVisualKey(embed.data.title), { components: [row] }));
   }
 
   if (message.content === '!bal') {
@@ -1580,7 +1753,7 @@ client.on('messageCreate', async (message) => {
       .setDescription('Boost items are capped and cannot stack while active.')
       .addFields(
         Object.entries(SHOP_ITEMS).map(([key, item]) =>
-          field(`${item.name} • ${item.price} Aura`, `Key: \`${key}\`\nLimit: ${item.maxOwned}\n${item.description}`, false)
+          field(`${item.emoji} ${item.name} • ${item.price} Aura`, `Key: \`${key}\`\nLimit: ${item.maxOwned}\n${item.description}`, false)
         )
       );
 
@@ -1604,7 +1777,7 @@ client.on('messageCreate', async (message) => {
     updateRank(user);
     await user.save();
     const embed = createEmbed(message, 'Purchase Complete', EMBED_COLORS.success)
-      .setDescription(`Bought **${shopItem.name}** for ${shopItem.price} Aura.`)
+      .setDescription(`Bought **${shopItem.emoji} ${shopItem.name}** for ${shopItem.price} Aura.`)
       .addFields(
         field('Wallet Left', user.aura),
         field('Owned', `${countItem(user, shopItem.name)}`),
@@ -1633,7 +1806,7 @@ client.on('messageCreate', async (message) => {
     activateBoost(user, shopItem.boostKey, shopItem.multiplier, shopItem.durationMs);
     await user.save();
     const embed = createEmbed(message, 'Boost Activated', EMBED_COLORS.success)
-      .setDescription(`${shopItem.name} is now active.`)
+      .setDescription(`${shopItem.emoji} ${shopItem.name} is now active.`)
       .addFields(
         field('Effect', `${shopItem.multiplier}x ${BOOST_LABELS[shopItem.boostKey]}`),
         field('Duration', formatDuration(shopItem.durationMs))
@@ -1652,6 +1825,7 @@ client.on('messageCreate', async (message) => {
 
     await user.save();
     const embed = createEmbed(message, 'Crate Opened', EMBED_COLORS.primary)
+      .setDescription('📦 Your crate burst open with a shower of loot.')
       .addFields(
         field('Aura', `+${auraResult.reward}${auraResult.multiplier > 1 ? ` (${auraResult.multiplier}x boost)` : ''}`),
         field('XP', `+${xpResult.reward}`),
@@ -1680,7 +1854,7 @@ client.on('messageCreate', async (message) => {
             )
           )
         );
-      return message.reply({ embeds: [embed], components: [buildBossStartRow()] });
+      return message.reply(visualReplyOptions(embed, 'boss_codex', { components: [buildBossStartRow()] }));
     }
 
     if (subcommand === 'start') {
@@ -1709,7 +1883,7 @@ client.on('messageCreate', async (message) => {
           field('Rewards', `${boss.aura} Aura • ${boss.xp} XP • ${boss.clanXp} Clan XP`, false),
           field('Perk', boss.perk.label, false)
         );
-      return message.reply({ embeds: [embed], components: [buildSoloBossRow()] });
+      return message.reply(visualReplyOptions(embed, getBossVisualKey(boss), { components: [buildSoloBossRow()] }));
     }
 
     if (subcommand === 'attack') {
@@ -1736,7 +1910,7 @@ client.on('messageCreate', async (message) => {
             field('Clan XP', `+${clanXpResult.gained || 0}`),
             field('Perk', perkGranted ? state.boss.perk.label : `${state.boss.perk.label} already active`, false)
           );
-        return message.reply({ embeds: [embed], components: [buildBossStartRow()] });
+        return message.reply(visualReplyOptions(embed, getBossVisualKey(state.boss), { components: [buildBossStartRow()] }));
       }
 
       const counter = bossCounterDamage(user, state.boss);
@@ -1747,7 +1921,7 @@ client.on('messageCreate', async (message) => {
         const embed = createEmbed(message, `Defeat: ${state.boss.name}`, EMBED_COLORS.danger)
           .setDescription(`The boss finished you with ${counter.dodged ? 'a missed counter' : `${counter.damage} damage`}.`)
           .addFields(field('Try Again', `Use \`!boss start ${state.boss.key}\``));
-        return message.reply({ embeds: [embed], components: [buildBossStartRow()] });
+        return message.reply(visualReplyOptions(embed, getBossVisualKey(state.boss), { components: [buildBossStartRow()] }));
       }
 
       const embed = createEmbed(message, `Boss Turn: ${state.boss.name}`, EMBED_COLORS.danger)
@@ -1757,7 +1931,7 @@ client.on('messageCreate', async (message) => {
           field('Your HP', `${Math.max(state.playerHp, 0)}/${state.maxPlayerHp} ${bar(Math.max(state.playerHp, 0), state.maxPlayerHp)}`, false),
           field('Heals Left', state.healsLeft)
         );
-      return message.reply({ embeds: [embed], components: [buildSoloBossRow()] });
+      return message.reply(visualReplyOptions(embed, getBossVisualKey(state.boss), { components: [buildSoloBossRow()] }));
     }
 
     if (subcommand === 'heal') {
@@ -1777,7 +1951,7 @@ client.on('messageCreate', async (message) => {
         activeBossBattles.delete(user.userId);
         const embed = createEmbed(message, `Defeat: ${state.boss.name}`, EMBED_COLORS.danger)
           .setDescription(`You healed for ${healed}, but the boss ended the fight ${counter.dodged ? 'without landing the counter cleanly' : `with ${counter.damage} damage`}.`);
-        return message.reply({ embeds: [embed], components: [buildBossStartRow()] });
+        return message.reply(visualReplyOptions(embed, getBossVisualKey(state.boss), { components: [buildBossStartRow()] }));
       }
 
       const embed = createEmbed(message, `Boss Heal: ${state.boss.name}`, EMBED_COLORS.success)
@@ -1787,7 +1961,7 @@ client.on('messageCreate', async (message) => {
           field('Your HP', `${Math.max(state.playerHp, 0)}/${state.maxPlayerHp} ${bar(Math.max(state.playerHp, 0), state.maxPlayerHp)}`, false),
           field('Heals Left', state.healsLeft)
         );
-      return message.reply({ embeds: [embed], components: [buildSoloBossRow()] });
+      return message.reply(visualReplyOptions(embed, getBossVisualKey(state.boss), { components: [buildSoloBossRow()] }));
     }
 
     if (subcommand === 'status') {
@@ -1800,7 +1974,7 @@ client.on('messageCreate', async (message) => {
           field('Heals Left', state.healsLeft),
           field('Reward Perk', state.boss.perk.label)
         );
-      return message.reply({ embeds: [embed], components: [buildSoloBossRow()] });
+      return message.reply(visualReplyOptions(embed, getBossVisualKey(state.boss), { components: [buildSoloBossRow()] }));
     }
 
     if (subcommand === 'clan') {
@@ -1840,7 +2014,7 @@ client.on('messageCreate', async (message) => {
             field('Boss HP', boss.clanHp),
             field('Join', 'Use `!boss clan join`', false)
           );
-        return message.reply({ embeds: [embed], components: [buildClanBossRow()] });
+        return message.reply(visualReplyOptions(embed, getBossVisualKey(boss), { components: [buildClanBossRow()] }));
       }
 
       if (action === 'join') {
@@ -1864,7 +2038,7 @@ client.on('messageCreate', async (message) => {
             field('Heals Left', raid.healsLeft[user.userId]),
             field('Roster Size', raid.participants.length)
           );
-        return message.reply({ embeds: [embed], components: [buildClanBossRow()] });
+        return message.reply(visualReplyOptions(embed, getBossVisualKey(raid.boss), { components: [buildClanBossRow()] }));
       }
 
       if (action === 'status') {
@@ -1881,7 +2055,7 @@ client.on('messageCreate', async (message) => {
             field('Top Logs', raid.logs.slice(-4).join('\n') || 'No logs yet.', false),
             field('Roster', roster, false)
           );
-        return message.reply({ embeds: [embed], components: [buildClanBossRow()] });
+        return message.reply(visualReplyOptions(embed, getBossVisualKey(raid.boss), { components: [buildClanBossRow()] }));
       }
 
       if (action === 'attack') {
@@ -1907,7 +2081,7 @@ client.on('messageCreate', async (message) => {
               field('Clan XP', `+${rewards.clanXpResult.gained || 0}`),
               field('Rewards', rewards.rewardLines.join('\n'), false)
             );
-          return message.reply({ embeds: [embed], components: [buildBossStartRow()] });
+          return message.reply(visualReplyOptions(embed, getBossVisualKey(raid.boss), { components: [buildBossStartRow()] }));
         }
 
         const counter = bossCounterDamage(user, raid.boss);
@@ -1919,7 +2093,7 @@ client.on('messageCreate', async (message) => {
           activeClanBossRaids.delete(raid.clanName);
           const embed = createEmbed(message, `Raid Failed: ${raid.boss.name}`, EMBED_COLORS.danger)
             .setDescription(`The full **${raid.clanName}** roster was defeated.`);
-          return message.reply({ embeds: [embed], components: [buildBossStartRow()] });
+          return message.reply(visualReplyOptions(embed, getBossVisualKey(raid.boss), { components: [buildBossStartRow()] }));
         }
 
         const embed = createEmbed(message, `Raid Turn: ${raid.boss.name}`, EMBED_COLORS.danger)
@@ -1929,7 +2103,7 @@ client.on('messageCreate', async (message) => {
             field('Your HP', `${Math.max(raid.playerHp[user.userId], 0)}/${raid.playerMaxHp[user.userId]}`),
             field('Roster Alive', raid.participants.filter(id => (raid.playerHp[id] || 0) > 0).length)
           );
-        return message.reply({ embeds: [embed], components: [buildClanBossRow()] });
+        return message.reply(visualReplyOptions(embed, getBossVisualKey(raid.boss), { components: [buildClanBossRow()] }));
       }
 
       if (action === 'heal') {
@@ -1955,7 +2129,7 @@ client.on('messageCreate', async (message) => {
           activeClanBossRaids.delete(raid.clanName);
           const embed = createEmbed(message, `Raid Failed: ${raid.boss.name}`, EMBED_COLORS.danger)
             .setDescription(`You healed for ${healed}, but the raid still collapsed.`);
-          return message.reply({ embeds: [embed], components: [buildBossStartRow()] });
+          return message.reply(visualReplyOptions(embed, getBossVisualKey(raid.boss), { components: [buildBossStartRow()] }));
         }
 
         const embed = createEmbed(message, `Raid Heal: ${raid.boss.name}`, EMBED_COLORS.success)
@@ -1965,7 +2139,7 @@ client.on('messageCreate', async (message) => {
             field('Your HP', `${Math.max(raid.playerHp[user.userId], 0)}/${raid.playerMaxHp[user.userId]}`),
             field('Heals Left', raid.healsLeft[user.userId])
           );
-        return message.reply({ embeds: [embed], components: [buildClanBossRow()] });
+        return message.reply(visualReplyOptions(embed, getBossVisualKey(raid.boss), { components: [buildClanBossRow()] }));
       }
 
       return message.reply({ embeds: [infoEmbed(message, 'Clan Boss Commands', 'Use `!boss clan start <boss>`, `!boss clan join`, `!boss clan attack`, `!boss clan heal`, or `!boss clan status`.')] });
@@ -1979,10 +2153,11 @@ client.on('messageCreate', async (message) => {
     const subcommand = (args[0] || '').toLowerCase();
 
     if (!subcommand) {
-      return message.reply({
-        embeds: [infoEmbed(message, 'Clan Commands', 'Use `!clan create <name>`, `!clan invite @user`, `!clan join <name>`, `!clan accept <name>`, `!clan decline <name>`, `!clan rename <new name>`, `!clan privacy <public|private>`, `!clan leave`, `!clan transfer @user`, `!clan kick @user`, `!clan war <name>`, `!clan info [name]`, or `!clan top`.')],
-        components: !user.clan ? [buildClanCreateRow()] : user.clanRole === 'owner' ? [buildClanRenameRow()] : []
-      });
+      return message.reply(visualReplyOptions(
+        infoEmbed(message, 'Clan Commands', 'Use `!clan create <name>`, `!clan invite @user`, `!clan join <name>`, `!clan accept <name>`, `!clan decline <name>`, `!clan rename <new name>`, `!clan privacy <public|private>`, `!clan leave`, `!clan transfer @user`, `!clan kick @user`, `!clan war <name>`, `!clan info [name]`, or `!clan top`.'),
+        getClanVisualKey('clan commands'),
+        { components: !user.clan ? [buildClanCreateRow()] : user.clanRole === 'owner' ? [buildClanRenameRow()] : [] }
+      ));
     }
 
     if (subcommand === 'create') {
@@ -2013,7 +2188,7 @@ client.on('messageCreate', async (message) => {
           field('Member Cap', getClanLevelData(user.clanLevel).perks.memberCap),
           field('Wallet Left', user.aura)
         );
-      return message.reply({ embeds: [embed] });
+      return message.reply(visualReplyOptions(embed, getClanVisualKey(embed.data.title)));
     }
 
     if (subcommand === 'invite') {
@@ -2051,7 +2226,7 @@ client.on('messageCreate', async (message) => {
       const embed = createEmbed(message, 'Clan Invite Sent', EMBED_COLORS.info)
         .setDescription(`Invited **${targetUser.username}** to **${user.clan}**.`)
         .addFields(field('Invitee', `<@${targetUser.id}>`), field('Privacy', user.clanPrivacy));
-      return message.reply({ embeds: [embed], components: [buildClanInviteRow(user.clan, targetUser.id)] });
+      return message.reply(visualReplyOptions(embed, getClanVisualKey(embed.data.title), { components: [buildClanInviteRow(user.clan, targetUser.id)] }));
     }
 
     if (subcommand === 'join') {
@@ -2083,7 +2258,7 @@ client.on('messageCreate', async (message) => {
           field('Role', user.clanRole),
           field('Privacy', user.clanPrivacy)
         );
-      return message.reply({ embeds: [embed] });
+      return message.reply(visualReplyOptions(embed, getClanVisualKey(embed.data.title)));
     }
 
     if (subcommand === 'accept') {
@@ -2120,7 +2295,7 @@ client.on('messageCreate', async (message) => {
           field('Role', user.clanRole),
           field('Privacy', user.clanPrivacy)
         );
-      return message.reply({ embeds: [embed] });
+      return message.reply(visualReplyOptions(embed, getClanVisualKey(embed.data.title)));
     }
 
     if (subcommand === 'decline') {
@@ -2135,7 +2310,7 @@ client.on('messageCreate', async (message) => {
       pendingClanInvites.delete(`${inviteName}:${user.userId}`);
       const embed = createEmbed(message, 'Clan Invite Declined', EMBED_COLORS.danger)
         .setDescription(`Declined invite to **${inviteName}**.`);
-      return message.reply({ embeds: [embed] });
+      return message.reply(visualReplyOptions(embed, getClanVisualKey(embed.data.title)));
     }
 
     if (subcommand === 'rename') {
@@ -2173,11 +2348,12 @@ client.on('messageCreate', async (message) => {
       await user.save();
 
       return message.reply({
-        embeds: [
+        ...visualReplyOptions(
           createEmbed(message, 'Clan Renamed', EMBED_COLORS.success)
             .setDescription(`Your clan is now **${newClanName}**.`)
-            .addFields(field('Old Name', oldClanName), field('New Name', newClanName))
-        ]
+            .addFields(field('Old Name', oldClanName), field('New Name', newClanName)),
+          getClanVisualKey('clan renamed')
+        )
       });
     }
 
@@ -2194,11 +2370,12 @@ client.on('messageCreate', async (message) => {
       user.clanPrivacy = mode;
 
       return message.reply({
-        embeds: [
+        ...visualReplyOptions(
           createEmbed(message, 'Clan Privacy Updated', EMBED_COLORS.info)
             .setDescription(`**${user.clan}** is now **${mode}**.`)
-            .addFields(field('Join Rule', mode === 'public' ? 'Anyone can join with `!clan join` or the Join Clan button.' : 'Only invited players can join.'))
-        ]
+            .addFields(field('Join Rule', mode === 'public' ? 'Anyone can join with `!clan join` or the Join Clan button.' : 'Only invited players can join.')),
+          getClanVisualKey('clan privacy')
+        )
       });
     }
 
@@ -2222,11 +2399,11 @@ client.on('messageCreate', async (message) => {
       if (oldMembers === 1) {
         const embed = createEmbed(message, 'Clan Left', EMBED_COLORS.danger)
           .setDescription(`You left **${oldClan}**. The clan now has no members.`);
-        return message.reply({ embeds: [embed] });
+        return message.reply(visualReplyOptions(embed, getClanVisualKey(embed.data.title)));
       }
       const embed = createEmbed(message, 'Clan Left', EMBED_COLORS.danger)
         .setDescription(`You left **${oldClan}**.`);
-      return message.reply({ embeds: [embed] });
+      return message.reply(visualReplyOptions(embed, getClanVisualKey(embed.data.title)));
     }
 
     if (subcommand === 'transfer') {
@@ -2246,7 +2423,7 @@ client.on('messageCreate', async (message) => {
       await target.save();
       const embed = createEmbed(message, 'Ownership Transferred', EMBED_COLORS.info)
         .setDescription(`Transferred **${user.clan}** ownership to **${targetUser.username}**.`);
-      return message.reply({ embeds: [embed] });
+      return message.reply(visualReplyOptions(embed, getClanVisualKey(embed.data.title)));
     }
 
     if (subcommand === 'kick') {
@@ -2268,7 +2445,7 @@ client.on('messageCreate', async (message) => {
       await target.save();
       const embed = createEmbed(message, 'Member Kicked', EMBED_COLORS.danger)
         .setDescription(`Removed **${targetUser.username}** from **${user.clan}**.`);
-      return message.reply({ embeds: [embed] });
+      return message.reply(visualReplyOptions(embed, getClanVisualKey(embed.data.title)));
     }
 
     if (subcommand === 'war') {
@@ -2291,7 +2468,7 @@ client.on('messageCreate', async (message) => {
         const embed = createEmbed(message, 'Clan War Roster', EMBED_COLORS.info)
           .setDescription(`You joined the war roster for **${user.clan}**.`)
           .addFields(field('Roster Size', war[rosterKey].length), field('Cap', cap));
-        return message.reply({ embeds: [embed], components: [buildClanWarRow(user, war)] });
+        return message.reply(visualReplyOptions(embed, getClanVisualKey(embed.data.title), { components: [buildClanWarRow(user, war)] }));
       }
 
       if (warAction === 'leave') {
@@ -2304,7 +2481,7 @@ client.on('messageCreate', async (message) => {
         war.logs.push(`${message.author.username} left the ${user.clan} war roster.`);
         const embed = createEmbed(message, 'Clan War Roster', EMBED_COLORS.danger)
           .setDescription(`You left the war roster for **${user.clan}**.`);
-        return message.reply({ embeds: [embed], components: [buildClanWarRow(user, war)] });
+        return message.reply(visualReplyOptions(embed, getClanVisualKey(embed.data.title), { components: [buildClanWarRow(user, war)] }));
       }
 
       if (warAction === 'status') {
@@ -2323,7 +2500,7 @@ client.on('messageCreate', async (message) => {
             field(`${war.defenderClan} Roster`, `${war.defenderParticipants.length}/${defenderCap}`),
             field('Recent Logs', recentLogs, false)
           );
-        return message.reply({ embeds: [embed], components: [buildClanWarRow(user, war)] });
+        return message.reply(visualReplyOptions(embed, getClanVisualKey(embed.data.title), { components: [buildClanWarRow(user, war)] }));
       }
 
       if (warAction === 'start') {
@@ -2351,7 +2528,7 @@ client.on('messageCreate', async (message) => {
             field('Rewards', `Winner members +6000 Aura • Loser members +2000 Aura • +${result.winnerClanXp.gained || 0} Clan XP`, false),
             field('War Log', war.logs.slice(-6).join('\n'), false)
           );
-        return message.reply({ embeds: [embed], components: [] });
+        return message.reply(visualReplyOptions(embed, getClanVisualKey(embed.data.title), { components: [] }));
       }
 
       if (user.clanRole !== 'owner') return message.reply('Only the clan owner can start a clan war.');
@@ -2391,7 +2568,7 @@ client.on('messageCreate', async (message) => {
       const embed = createEmbed(message, 'Clan War Challenge', EMBED_COLORS.danger)
         .setDescription(`**${user.clan}** has challenged **${targetSummary.name}**.`)
         .addFields(field('Defending Owner', `<@${targetOwner.userId}>`));
-      return message.reply({ embeds: [embed], components: [row] });
+      return message.reply(visualReplyOptions(embed, getClanVisualKey(embed.data.title), { components: [row] }));
     }
 
     if (subcommand === 'info') {
@@ -2436,7 +2613,7 @@ client.on('messageCreate', async (message) => {
         rows.push(buildClanLeaveRow(summary.name));
       }
 
-      return message.reply({ embeds: [embed], components: rows });
+      return message.reply(visualReplyOptions(embed, getClanVisualKey(embed.data.title), { components: rows }));
     }
 
     if (subcommand === 'top') {
@@ -2460,7 +2637,7 @@ client.on('messageCreate', async (message) => {
 
       const embed = createEmbed(message, 'Top Clans', EMBED_COLORS.info)
         .setDescription(topClans);
-      return message.reply({ embeds: [embed] });
+      return message.reply(visualReplyOptions(embed, getClanVisualKey(embed.data.title)));
     }
 
     return message.reply({ embeds: [warningEmbed(message, 'Unknown Clan Command', 'Use `!clan create`, `!clan invite`, `!clan join`, `!clan accept`, `!clan decline`, `!clan rename`, `!clan privacy`, `!clan leave`, `!clan transfer`, `!clan kick`, `!clan war <name>`, `!clan war join`, `!clan war leave`, `!clan war start`, `!clan war status`, `!clan info`, or `!clan top`.')] });
@@ -2533,9 +2710,10 @@ client.on('interactionCreate', async (interaction) => {
     }
 
     return interaction.reply({
-      embeds: [buildHelpSectionEmbed({ author: interaction.user }, section)],
-      components: [buildHelpRow()],
-      ephemeral: true
+      ...visualReplyOptions(buildHelpSectionEmbed({ author: interaction.user }, section), getHelpVisualKey(section.key), {
+        components: [buildHelpRow()],
+        ephemeral: true
+      })
     });
   }
 
@@ -2563,7 +2741,7 @@ client.on('interactionCreate', async (interaction) => {
 
     return interaction.reply({
       embeds: [
-        interactionNoticeEmbed('Purchase Complete', `Bought **${shopItem.name}** for ${shopItem.price} Aura.`, EMBED_COLORS.success)
+        interactionNoticeEmbed('Purchase Complete', `Bought **${shopItem.emoji} ${shopItem.name}** for ${shopItem.price} Aura.`, EMBED_COLORS.success)
       ],
       ephemeral: true
     });
@@ -2591,7 +2769,7 @@ client.on('interactionCreate', async (interaction) => {
 
     return interaction.reply({
       embeds: [
-        interactionNoticeEmbed('Boost Activated', `${shopItem.name} is now active for ${formatDuration(shopItem.durationMs)}.`, EMBED_COLORS.success)
+        interactionNoticeEmbed('Boost Activated', `${shopItem.emoji} ${shopItem.name} is now active for ${formatDuration(shopItem.durationMs)}.`, EMBED_COLORS.success)
       ],
       ephemeral: true
     });
@@ -2614,6 +2792,7 @@ client.on('interactionCreate', async (interaction) => {
         new EmbedBuilder()
           .setColor(EMBED_COLORS.primary)
           .setTitle('Crate Opened')
+          .setDescription('📦 Your crate burst open with a shower of loot.')
           .addFields(
             field('Aura', `+${auraResult.reward}${auraResult.multiplier > 1 ? ` (${auraResult.multiplier}x boost)` : ''}`),
             field('XP', `+${xpResult.reward}`),
@@ -3609,7 +3788,7 @@ client.on('interactionCreate', async (interaction) => {
     pendingChallenges.delete(challengeKey);
 
     return interaction.update({
-      embeds: [
+      ...visualReplyOptions(
         new EmbedBuilder()
           .setColor(EMBED_COLORS.danger)
           .setTitle('PvP Battle Started')
@@ -3619,9 +3798,10 @@ client.on('interactionCreate', async (interaction) => {
             field('Opponent HP', `${battle.hp[targetId]}/${battleMaxHp(challenged)} ${bar(battle.hp[targetId], battleMaxHp(challenged))}`, false),
             field('Battle Rules', 'Each player has 2 heals and 1 critical strike.', false)
           )
-          .setTimestamp()
-      ],
-      components: [buildBattleRow(false)]
+          .setTimestamp(),
+        getPvpVisualKey('PvP Battle Started'),
+        { components: [buildBattleRow(false)] }
+      )
     });
   }
 
@@ -3633,14 +3813,15 @@ client.on('interactionCreate', async (interaction) => {
 
     pendingChallenges.delete(`${challengerId}:${targetId}`);
     return interaction.update({
-      embeds: [
+      ...visualReplyOptions(
         combatEmbed(
           'PvP Challenge Declined',
           EMBED_COLORS.danger,
           `<@${targetId}> declined the PvP challenge from <@${challengerId}>.`
-        )
-      ],
-      components: []
+        ),
+        getPvpVisualKey('PvP Challenge Declined'),
+        { components: [] }
+      )
     });
   }
 
@@ -3669,19 +3850,20 @@ client.on('interactionCreate', async (interaction) => {
       battles.delete(enemyId);
 
       return interaction.update({
-        embeds: [
+        ...visualReplyOptions(
           new EmbedBuilder()
             .setColor(EMBED_COLORS.success)
             .setTitle('PvP Victory')
             .setDescription(`+${auraResult.reward} Aura${auraResult.multiplier > 1 ? ` (${auraResult.multiplier}x boost)` : ''}${formatProgressExtras(xpResult)}${formatClanProgressExtras(clanXpResult)}`)
-            .setTimestamp()
-        ],
-        components: [buildBattleRow(true)]
+            .setTimestamp(),
+          getPvpVisualKey('PvP Victory'),
+          { components: [buildBattleRow(true)] }
+        )
       });
     }
 
     return interaction.update({
-      embeds: [
+      ...visualReplyOptions(
         new EmbedBuilder()
           .setColor(EMBED_COLORS.danger)
           .setTitle('PvP Turn')
@@ -3691,9 +3873,10 @@ client.on('interactionCreate', async (interaction) => {
             field('Your HP', `${battle.hp[interaction.user.id]}/${battleMaxHp(attacker)} ${bar(battle.hp[interaction.user.id], battleMaxHp(attacker))}`, false),
             field('Enemy HP', `${Math.max(battle.hp[enemyId], 0)}/${battleMaxHp(defender)} ${bar(Math.max(battle.hp[enemyId], 0), battleMaxHp(defender))}`, false)
           )
-          .setTimestamp()
-      ],
-      components: [buildBattleRow(false)]
+          .setTimestamp(),
+        getPvpVisualKey('PvP Turn'),
+        { components: [buildBattleRow(false)] }
+      )
     });
   }
 
@@ -3724,7 +3907,7 @@ client.on('interactionCreate', async (interaction) => {
     battle.turn = enemyId;
 
     return interaction.update({
-      embeds: [
+      ...visualReplyOptions(
         new EmbedBuilder()
           .setColor(EMBED_COLORS.success)
           .setTitle('PvP Heal')
@@ -3734,9 +3917,10 @@ client.on('interactionCreate', async (interaction) => {
             field('Next Turn', `<@${enemyId}>`),
             field('Your HP', `${battle.hp[interaction.user.id]}/${maxHp} ${bar(battle.hp[interaction.user.id], maxHp)}`, false)
           )
-          .setTimestamp()
-      ],
-      components: [buildBattleRow(false)]
+          .setTimestamp(),
+        getPvpVisualKey('PvP Heal'),
+        { components: [buildBattleRow(false)] }
+      )
     });
   }
 
@@ -3750,15 +3934,16 @@ client.on('interactionCreate', async (interaction) => {
     battle.turn = enemyId;
 
     return interaction.update({
-      embeds: [
+      ...visualReplyOptions(
         new EmbedBuilder()
           .setColor(EMBED_COLORS.info)
           .setTitle('PvP Defend')
           .setDescription('Defend activated. Your next incoming hit will be reduced.')
           .addFields(field('Next Turn', `<@${enemyId}>`))
-          .setTimestamp()
-      ],
-      components: [buildBattleRow(false)]
+          .setTimestamp(),
+        getPvpVisualKey('PvP Defend'),
+        { components: [buildBattleRow(false)] }
+      )
     });
   }
 
@@ -3791,19 +3976,20 @@ client.on('interactionCreate', async (interaction) => {
       battles.delete(enemyId);
 
       return interaction.update({
-        embeds: [
+        ...visualReplyOptions(
           new EmbedBuilder()
             .setColor(EMBED_COLORS.success)
             .setTitle('Critical Victory')
             .setDescription(`${result.dodged ? 'Enemy dodged the strike.' : `${result.damage}${result.crit ? ' damage (CRIT)' : ' damage'}`}\n+${auraResult.reward} Aura${auraResult.multiplier > 1 ? ` (${auraResult.multiplier}x boost)` : ''}${formatProgressExtras(xpResult)}${formatClanProgressExtras(clanXpResult)}`)
-            .setTimestamp()
-        ],
-        components: [buildBattleRow(true)]
+            .setTimestamp(),
+          getPvpVisualKey('Critical Victory'),
+          { components: [buildBattleRow(true)] }
+        )
       });
     }
 
     return interaction.update({
-      embeds: [
+      ...visualReplyOptions(
         new EmbedBuilder()
           .setColor(EMBED_COLORS.danger)
           .setTitle('Critical Strike')
@@ -3814,9 +4000,10 @@ client.on('interactionCreate', async (interaction) => {
             field('Your HP', `${battle.hp[interaction.user.id]}/${battleMaxHp(attacker)} ${bar(battle.hp[interaction.user.id], battleMaxHp(attacker))}`, false),
             field('Enemy HP', `${Math.max(battle.hp[enemyId], 0)}/${battleMaxHp(defender)} ${bar(Math.max(battle.hp[enemyId], 0), battleMaxHp(defender))}`, false)
           )
-          .setTimestamp()
-      ],
-      components: [buildBattleRow(false)]
+          .setTimestamp(),
+        getPvpVisualKey('Critical Strike'),
+        { components: [buildBattleRow(false)] }
+      )
     });
   }
 });

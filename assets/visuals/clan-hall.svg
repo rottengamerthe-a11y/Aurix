@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1f1024"/>
+      <stop offset="100%" stop-color="#5b2333"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="1200" height="420" fill="url(#bg)"/>
+  <rect x="718" y="55" width="387" height="300" rx="28" fill="#140b12" opacity="0.36"/>
+  <rect x="50" y="42" width="1100" height="336" rx="30" fill="none" stroke="#fda4af" stroke-opacity="0.28" stroke-width="2.5" filter="url(#glow)"/>
+  <path d="M798 104l44 20 44-20v68c0 38-28 69-44 80-16-11-44-42-44-80z" fill="#fb7185" opacity="0.3" stroke="#fff1f2" stroke-width="3" filter="url(#glow)"/>
+  <circle cx="888" cy="142" r="18" fill="#fdba74" opacity="0.98" filter="url(#glow)"/>
+  <circle cx="934" cy="142" r="18" fill="#fbcfe8" opacity="0.98" filter="url(#glow)"/>
+  <circle cx="980" cy="142" r="18" fill="#fde68a" opacity="0.98" filter="url(#glow)"/>
+  <path d="M780 250h206" stroke="#fda4af" stroke-opacity="0.52" stroke-width="3" filter="url(#glow)"/>
+  <path d="M782 280c20-18 44-18 64 0" fill="none" stroke="#fdba74" stroke-width="5" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M864 280c20-18 44-18 64 0" fill="none" stroke="#fbcfe8" stroke-width="5" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M946 280c20-18 44-18 64 0" fill="none" stroke="#fde68a" stroke-width="5" stroke-linecap="round" filter="url(#glow)"/>
+  <text x="85" y="145" fill="#fff1f2" font-size="64" font-family="Segoe UI, Arial, sans-serif" font-weight="700" filter="url(#glow)">Clan Hall</text>
+  <text x="85" y="198" fill="#fecdd3" font-size="28" font-family="Segoe UI, Arial, sans-serif">
+    <tspan x="85" dy="0">Invites, ownership, privacy,</tspan>
+    <tspan x="85" dy="34">and guild progress.</tspan>
+  </text>
+  <text x="560" y="160" fill="#fda4af" font-size="24" font-family="Segoe UI, Arial, sans-serif" filter="url(#glow)">Private or Public</text>
+  <text x="560" y="205" fill="#fdba74" font-size="22" font-family="Segoe UI, Arial, sans-serif" filter="url(#glow)">Build a roster</text>
+  <text x="560" y="250" fill="#fbcfe8" font-size="22" font-family="Segoe UI, Arial, sans-serif" filter="url(#glow)">Level up together</text>
+</svg>

@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0d0822"/>
+      <stop offset="55%" stop-color="#1d1247"/>
+      <stop offset="100%" stop-color="#331973"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="79%" cy="42%" r="42%">
+      <stop offset="0%" stop-color="#9d6bff" stop-opacity="0.52"/>
+      <stop offset="100%" stop-color="#9d6bff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="1200" height="420" fill="url(#bg)"/>
+  <rect width="1200" height="420" fill="url(#halo)"/>
+  <rect x="50" y="46" width="1100" height="328" rx="28" fill="none" stroke="#ceb7ff" stroke-opacity="0.28" stroke-width="2.5" filter="url(#glow)"/>
+  <circle cx="962" cy="196" r="152" fill="#a67cff" opacity="0.1" filter="url(#glow)"/>
+  <path d="M876 118c18-44 54-66 108-66s90 22 108 66c-34-18-56-22-78-16-22 6-46 6-68 0-22-6-44-2-70 16z" fill="#1f1343" stroke="#f2ebff" stroke-width="3"/>
+  <path d="M910 120c20-24 52-36 74-36s54 12 74 36c-12 52-40 78-74 78s-62-26-74-78z" fill="#e8ddff" opacity="0.92" filter="url(#glow)"/>
+  <path d="M936 126c12-12 34-18 48-18s36 6 48 18c-10 26-26 38-48 38s-38-12-48-38z" fill="#241258"/>
+  <ellipse cx="984" cy="126" rx="28" ry="10" fill="#ff69d2" opacity="0.92" filter="url(#glow)"/>
+  <circle cx="984" cy="126" r="6" fill="#fff4c7"/>
+  <path d="M882 154h204l-30 52 28 138h-198l28-138z" fill="#241258" opacity="0.8" stroke="#f5f0ff" stroke-width="3"/>
+  <path d="M924 176h120l-18 34h-82z" fill="#c7a9ff" opacity="0.24" filter="url(#glow)"/>
+  <path d="M878 210l-78 40 58 24 60-30z" fill="#180d3c" stroke="#dccfff" stroke-width="3"/>
+  <path d="M1090 210l78 40-58 24-60-30z" fill="#180d3c" stroke="#dccfff" stroke-width="3"/>
+  <path d="M934 228c30-22 70-22 100 0" fill="none" stroke="#f0e8ff" stroke-width="5" stroke-linecap="round"/>
+  <path d="M928 284l26 26h60l26-26" fill="none" stroke="#a97eff" stroke-width="4" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M916 92l14-28 20 26z" fill="#e2d4ff" opacity="0.9" filter="url(#glow)"/>
+  <path d="M1038 92l14-28 20 26z" fill="#e2d4ff" opacity="0.9" filter="url(#glow)"/>
+  <path d="M840 126c18-20 44-22 64-4-10 14-22 20-34 20s-22-4-30-16z" fill="none" stroke="#ceb7ff" stroke-width="4"/>
+  <path d="M1092 140c14-14 30-14 42 0-10 12-18 16-22 16s-12-4-20-16z" fill="none" stroke="#ceb7ff" stroke-width="3"/>
+  <path d="M768 302c24-16 48-18 74-4" fill="none" stroke="#9f74ff" stroke-width="5" stroke-linecap="round" opacity="0.8" filter="url(#glow)"/>
+  <text x="85" y="145" fill="#f7f3ff" font-size="64" font-family="Segoe UI, Arial, sans-serif" font-weight="700" filter="url(#glow)">Void Oracle</text>
+  <text x="85" y="198" fill="#d8c8ff" font-size="28" font-family="Segoe UI, Arial, sans-serif">
+    <tspan x="85" dy="0">A prophetic nightmare with a neon gaze</tspan>
+    <tspan x="85" dy="34">and brutal, unstable rewards.</tspan>
+  </text>
+</svg>

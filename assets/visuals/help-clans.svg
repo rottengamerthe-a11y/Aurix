@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3f1d2e"/>
+      <stop offset="100%" stop-color="#7c2d12"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="1200" height="420" fill="url(#bg)"/>
+  <rect x="760" y="70" width="300" height="220" rx="24" fill="#140c10" opacity="0.3"/>
+  <rect x="50" y="48" width="1100" height="324" rx="28" fill="none" stroke="#fecdd3" stroke-opacity="0.28" stroke-width="2.5" filter="url(#glow)"/>
+  <path d="M844 110l36 16 36-16v56c0 31-23 57-36 66-13-9-36-35-36-66z" fill="#fb7185" opacity="0.34" stroke="#fff1f2" stroke-width="3" filter="url(#glow)"/>
+  <path d="M938 122h74v12h-74z" fill="#fda4af" opacity="0.92" filter="url(#glow)"/>
+  <path d="M938 154h96v10h-96z" fill="#fdba74" opacity="0.88" filter="url(#glow)"/>
+  <path d="M938 186h88v10h-88z" fill="#fbcfe8" opacity="0.88" filter="url(#glow)"/>
+  <path d="M106 86c24 0 42 12 56 34" fill="none" stroke="#fda4af" stroke-width="5" stroke-linecap="round" opacity="0.8" filter="url(#glow)"/>
+  <path d="M170 74l7 14 16 2-11 10 3 16-15-8-14 8 2-16-11-10 16-2z" fill="#fde68a" opacity="0.96" filter="url(#glow)"/>
+  <text x="80" y="145" fill="#fff1f2" font-size="62" font-family="Segoe UI, Arial, sans-serif" font-weight="700" filter="url(#glow)">Clans</text>
+  <text x="80" y="198" fill="#fecdd3" font-size="28" font-family="Segoe UI, Arial, sans-serif">
+    <tspan x="80" dy="0">Create a banner, lead rosters,</tspan>
+    <tspan x="80" dy="34">recruit allies, and fight wars.</tspan>
+  </text>
+  <text x="805" y="155" fill="#fb7185" font-size="30" font-family="Segoe UI, Arial, sans-serif">Hall</text>
+  <text x="805" y="198" fill="#fed7aa" font-size="24" font-family="Segoe UI, Arial, sans-serif">Roster</text>
+  <text x="805" y="241" fill="#fda4af" font-size="24" font-family="Segoe UI, Arial, sans-serif">War Board</text>
+</svg>

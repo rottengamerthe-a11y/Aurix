@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420">
+  <defs>
+    <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#14532d"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="1200" height="420" fill="url(#grad)"/>
+  <rect x="70" y="75" width="360" height="250" rx="28" fill="#052e16" opacity="0.82"/>
+  <rect x="54" y="54" width="1092" height="312" rx="30" fill="none" stroke="#86efac" stroke-opacity="0.28" stroke-width="2.5" filter="url(#glow)"/>
+  <path d="M562 110h180v34H562z" fill="#22c55e" opacity="0.2" filter="url(#glow)"/>
+  <path d="M562 160h256v20H562z" fill="#86efac" opacity="0.16" filter="url(#glow)"/>
+  <path d="M562 198h212v20H562z" fill="#86efac" opacity="0.14" filter="url(#glow)"/>
+  <path d="M564 268c36-34 81-34 117 0" fill="none" stroke="#86efac" stroke-width="6" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M724 252l14 28 31 4-22 20 5 30-28-15-28 15 5-30-22-20 31-4z" fill="#dcfce7" opacity="0.82" filter="url(#glow)"/>
+  <rect x="875" y="88" width="175" height="120" rx="24" fill="#14532d" opacity="0.45"/>
+  <path d="M905 122h115v16H905z" fill="#bbf7d0" opacity="0.9" filter="url(#glow)"/>
+  <path d="M905 152h87v12H905z" fill="#86efac" opacity="0.86" filter="url(#glow)"/>
+  <circle cx="1030" cy="150" r="14" fill="#fef08a" filter="url(#glow)"/>
+  <text x="110" y="155" fill="#dcfce7" font-size="60" font-family="Segoe UI, Arial, sans-serif" font-weight="700" filter="url(#glow)">Core</text>
+  <text x="110" y="205" fill="#86efac" font-size="26" font-family="Segoe UI, Arial, sans-serif">Economy, profile, vault,</text>
+  <text x="110" y="238" fill="#86efac" font-size="26" font-family="Segoe UI, Arial, sans-serif">daily rewards, and stats.</text>
+  <circle cx="930" cy="140" r="120" fill="#22c55e" opacity="0.2" filter="url(#glow)"/>
+  <circle cx="1010" cy="270" r="160" fill="#4ade80" opacity="0.13" filter="url(#glow)"/>
+</svg>

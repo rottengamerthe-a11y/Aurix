@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#08111f"/>
+      <stop offset="100%" stop-color="#11375f"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="1200" height="420" fill="url(#bg)"/>
+  <rect x="34" y="34" width="1132" height="352" rx="28" fill="none" stroke="#7dd3fc" stroke-opacity="0.32" stroke-width="2.5" filter="url(#glow)"/>
+  <circle cx="940" cy="110" r="120" fill="#38bdf8" opacity="0.18" filter="url(#glow)"/>
+  <circle cx="1020" cy="290" r="150" fill="#7dd3fc" opacity="0.14" filter="url(#glow)"/>
+  <circle cx="930" cy="204" r="92" fill="none" stroke="#bae6fd" stroke-opacity="0.5" stroke-width="2.5" filter="url(#glow)"/>
+  <path d="M890 144l22 42 47 6-34 32 8 46-43-22-42 22 8-46-34-32 47-6z" fill="#e0f2fe" opacity="0.82" filter="url(#glow)"/>
+  <path d="M1018 96l8 16 18 2-13 12 3 18-16-8-16 8 3-18-13-12 18-2z" fill="#fef3c7" opacity="0.95" filter="url(#glow)"/>
+  <path d="M1066 248l7 14 16 2-12 11 3 16-14-8-15 8 3-16-11-11 16-2z" fill="#fde68a" opacity="0.95" filter="url(#glow)"/>
+  <path d="M802 286c24-20 58-20 82 0" fill="none" stroke="#67e8f9" stroke-width="6" stroke-linecap="round" opacity="0.9" filter="url(#glow)"/>
+  <path d="M808 320c18-14 44-14 62 0" fill="none" stroke="#bae6fd" stroke-width="4" stroke-linecap="round" opacity="0.9" filter="url(#glow)"/>
+  <circle cx="184" cy="80" r="10" fill="#fef08a" filter="url(#glow)"/>
+  <circle cx="214" cy="80" r="10" fill="#7dd3fc" filter="url(#glow)"/>
+  <circle cx="244" cy="80" r="10" fill="#86efac" filter="url(#glow)"/>
+  <text x="80" y="150" fill="#e0f2fe" font-size="64" font-family="Segoe UI, Arial, sans-serif" font-weight="700" filter="url(#glow)">Aura Realms Help</text>
+  <text x="80" y="208" fill="#bae6fd" font-size="28" font-family="Segoe UI, Arial, sans-serif">
+    <tspan x="80" dy="0">Core commands, skills, clans,</tspan>
+    <tspan x="80" dy="34">and bosses in one quick menu.</tspan>
+  </text>
+  <rect x="80" y="260" width="250" height="70" rx="18" fill="#0f172a" stroke="#38bdf8" stroke-width="3" filter="url(#glow)"/>
+  <text x="205" y="305" text-anchor="middle" fill="#7dd3fc" font-size="26" font-family="Segoe UI, Arial, sans-serif" filter="url(#glow)">Use !help &lt;section&gt;</text>
+  <path d="M382 277h66l10 13 14-20 22 38 14-16 18 22h26" fill="none" stroke="#7dd3fc" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+</svg>

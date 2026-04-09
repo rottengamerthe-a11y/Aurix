@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#180708"/>
+      <stop offset="100%" stop-color="#6c1020"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="1200" height="420" fill="url(#bg)"/>
+  <circle cx="920" cy="130" r="130" fill="#ff4b67" opacity="0.18" filter="url(#glow)"/>
+  <circle cx="990" cy="300" r="180" fill="#ff6db0" opacity="0.12" filter="url(#glow)"/>
+  <rect x="52" y="48" width="1096" height="324" rx="28" fill="none" stroke="#fecaca" stroke-opacity="0.28" stroke-width="2.5" filter="url(#glow)"/>
+  <path d="M832 118c24-30 76-32 108-4" fill="none" stroke="#ff9aa8" stroke-width="8" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M860 126l18 48h-36z" fill="#fff7ed" opacity="0.9" filter="url(#glow)"/>
+  <path d="M948 132l16 38h-32z" fill="#ffe37b" opacity="0.88" filter="url(#glow)"/>
+  <path d="M878 220c20-10 42-10 62 0" fill="none" stroke="#fca5a5" stroke-width="4" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M1008 104l8 16 18 2-13 12 3 18-16-8-16 8 3-18-13-12 18-2z" fill="#fde68a" opacity="0.96" filter="url(#glow)"/>
+  <text x="80" y="145" fill="#fef2f2" font-size="62" font-family="Segoe UI, Arial, sans-serif" font-weight="700" filter="url(#glow)">Bosses</text>
+  <text x="80" y="198" fill="#fecaca" font-size="28" font-family="Segoe UI, Arial, sans-serif">
+    <tspan x="80" dy="0">Solo hunts, clan raids, brutal perks,</tspan>
+    <tspan x="80" dy="34">and heavy Aura rewards.</tspan>
+  </text>
+  <text x="80" y="275" fill="#fca5a5" font-size="24" font-family="Segoe UI, Arial, sans-serif">Ember Titan. Vault Warden. Void Oracle.</text>
+</svg>

@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#050f09"/>
+      <stop offset="52%" stop-color="#0c2417"/>
+      <stop offset="100%" stop-color="#113b24"/>
+    </linearGradient>
+    <radialGradient id="mist" cx="72%" cy="42%" r="44%">
+      <stop offset="0%" stop-color="#39ff88" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#39ff88" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="1200" height="420" fill="url(#bg)"/>
+  <rect width="1200" height="420" fill="url(#mist)"/>
+  <rect x="50" y="46" width="1100" height="328" rx="28" fill="none" stroke="#7affb4" stroke-opacity="0.3" stroke-width="2.5" filter="url(#glow)"/>
+  <circle cx="962" cy="202" r="152" fill="#39ff88" opacity="0.1" filter="url(#glow)"/>
+  <path d="M886 102l22-34 32 24 28-30 26 40-16 20h-74z" fill="#0f1c14" stroke="#9effc9" stroke-width="3" filter="url(#glow)"/>
+  <path d="M902 116h98l18 58-26 58h-82l-28-58z" fill="#10281a" stroke="#d9ffe9" stroke-width="3"/>
+  <path d="M918 128l20-12 18 12-10 22h-20z" fill="#020703"/>
+  <path d="M970 128l20-12 18 12-10 22h-20z" fill="#020703"/>
+  <path d="M926 142l14-8" stroke="#a7ff00" stroke-width="5" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M978 142l14-8" stroke="#a7ff00" stroke-width="5" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M936 174l28 12 26-12-12 24h-32z" fill="#7bff4f" opacity="0.92" filter="url(#glow)"/>
+  <path d="M876 192h150l24 48-22 126h-156l-22-126z" fill="#0d2f1a" stroke="#d9ffe9" stroke-width="3"/>
+  <path d="M922 208h60v126h-60z" fill="#41ff92" opacity="0.22" filter="url(#glow)"/>
+  <path d="M796 198h84l28 44-30 34h-82l-30-34z" fill="#0b2114" stroke="#bfffd8" stroke-width="3"/>
+  <path d="M786 226l86 12-30 30-66-10z" fill="#78ffb0" opacity="0.2" filter="url(#glow)"/>
+  <path d="M1026 192l72 18-10 112-82 32-20-32 16-94z" fill="#0f351d" stroke="#d7ffea" stroke-width="3"/>
+  <path d="M1018 214l50 14-8 66-56 18-12-20 8-60z" fill="#7fffc0" opacity="0.22" filter="url(#glow)"/>
+  <path d="M1042 110l58 40-54 18-26-26z" fill="#d9ffe9" opacity="0.95" filter="url(#glow)"/>
+  <path d="M896 364l-34 30h46l18-30z" fill="#061109"/>
+  <path d="M984 364l34 30h-46l-18-30z" fill="#061109"/>
+  <path d="M876 250h146" stroke="#7dffba" stroke-opacity="0.45" stroke-width="3" filter="url(#glow)"/>
+  <path d="M826 90c22-10 38-8 56 8" fill="none" stroke="#65ffb0" stroke-width="4" stroke-linecap="round" opacity="0.8" filter="url(#glow)"/>
+  <text x="85" y="145" fill="#f2fff8" font-size="64" font-family="Segoe UI, Arial, sans-serif" font-weight="700" filter="url(#glow)">Vault Warden</text>
+  <text x="85" y="198" fill="#aaffcf" font-size="28" font-family="Segoe UI, Arial, sans-serif">
+    <tspan x="85" dy="0">A corrupted sentinel of iron, poison light,</tspan>
+    <tspan x="85" dy="34">and relentless survival.</tspan>
+  </text>
+</svg>

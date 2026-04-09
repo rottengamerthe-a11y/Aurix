@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1e1b4b"/>
+      <stop offset="100%" stop-color="#4c1d95"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="1200" height="420" fill="url(#bg)"/>
+  <polygon points="875,40 1115,130 1020,360 770,280" fill="#c4b5fd" opacity="0.18" filter="url(#glow)"/>
+  <rect x="58" y="54" width="1084" height="312" rx="28" fill="none" stroke="#ddd6fe" stroke-opacity="0.28" stroke-width="2.5" filter="url(#glow)"/>
+  <circle cx="890" cy="144" r="46" fill="#a78bfa" opacity="0.28" filter="url(#glow)"/>
+  <circle cx="1012" cy="248" r="62" fill="#c4b5fd" opacity="0.22" filter="url(#glow)"/>
+  <path d="M836 136l32-18 32 18v36l-32 18-32-18z" fill="none" stroke="#f5f3ff" stroke-width="4" filter="url(#glow)"/>
+  <path d="M960 228l26-16 26 16v30l-26 16-26-16z" fill="none" stroke="#ddd6fe" stroke-width="4" filter="url(#glow)"/>
+  <path d="M808 302c18-8 34-8 52 0" fill="none" stroke="#e9d5ff" stroke-width="4" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M998 122l8 16 18 3-13 12 3 18-16-8-16 8 3-18-13-12 18-3z" fill="#fef3c7" opacity="0.95" filter="url(#glow)"/>
+  <path d="M706 96c22 8 35 25 40 50" fill="none" stroke="#a78bfa" stroke-width="5" stroke-linecap="round" filter="url(#glow)"/>
+  <text x="80" y="145" fill="#f5f3ff" font-size="62" font-family="Segoe UI, Arial, sans-serif" font-weight="700" filter="url(#glow)">Skills &amp; Shop</text>
+  <text x="80" y="198" fill="#ddd6fe" font-size="28" font-family="Segoe UI, Arial, sans-serif">
+    <tspan x="80" dy="0">Branch upgrades, specializations,</tspan>
+    <tspan x="80" dy="34">boosts, and crates.</tspan>
+  </text>
+  <text x="80" y="275" fill="#c4b5fd" font-size="24" font-family="Segoe UI, Arial, sans-serif">Sharpen damage, defense, and luck.</text>
+</svg>
