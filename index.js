@@ -348,6 +348,24 @@ const LOCAL_VISUALS = {
   boss_oracle: 'boss-oracle.svg'
 };
 
+const LOCAL_VISUAL_THUMBNAILS = {
+  help_summary: 'emblem-help.svg',
+  help_core: 'emblem-help.svg',
+  help_skills: 'emblem-help.svg',
+  help_clans: 'emblem-clan.svg',
+  help_bosses: 'emblem-boss.svg',
+  clan_hall: 'emblem-clan.svg',
+  clan_war: 'emblem-clan.svg',
+  clan_top: 'emblem-clan.svg',
+  pvp_challenge: 'emblem-pvp.svg',
+  pvp_battle: 'emblem-pvp.svg',
+  pvp_victory: 'emblem-pvp.svg',
+  boss_codex: 'emblem-boss.svg',
+  boss_ember: 'emblem-boss.svg',
+  boss_warden: 'emblem-boss.svg',
+  boss_oracle: 'emblem-boss.svg'
+};
+
 const VISUAL_THEME_LIBRARY = {
   default: {
     thumbnail: process.env.VISUAL_DEFAULT_THUMBNAIL || 'https://dummyimage.com/256x256/111827/f59e0b.png&text=Aura',
@@ -432,19 +450,32 @@ function getLocalVisualAttachment(key) {
   const filePath = path.join(VISUAL_ASSET_DIR, filename);
   if (!fs.existsSync(filePath)) return null;
 
+  const thumbnailFilename = LOCAL_VISUAL_THUMBNAILS[key] || filename;
+  const thumbnailPath = path.join(VISUAL_ASSET_DIR, thumbnailFilename);
   const svg = fs.readFileSync(filePath, 'utf8');
+  const thumbnailSvg = fs.existsSync(thumbnailPath) ? fs.readFileSync(thumbnailPath, 'utf8') : svg;
   const pngName = filename.replace(/\.svg$/i, '.png');
+  const thumbnailName = `thumb-${thumbnailFilename.replace(/\.svg$/i, '.png')}`;
   const resvg = new Resvg(svg, {
     fitTo: {
       mode: 'width',
       value: 1200
     }
   });
+  const thumbnailResvg = new Resvg(thumbnailSvg, {
+    fitTo: {
+      mode: 'width',
+      value: 256
+    }
+  });
   const png = resvg.render().asPng();
+  const thumbnailPng = thumbnailResvg.render().asPng();
 
   return {
     name: pngName,
-    file: new AttachmentBuilder(png, { name: pngName })
+    thumbnailName,
+    file: new AttachmentBuilder(png, { name: pngName }),
+    thumbnailFile: new AttachmentBuilder(thumbnailPng, { name: thumbnailName })
   };
 }
 
@@ -455,8 +486,10 @@ function withLocalVisual(embed, key) {
   }
 
   const url = `attachment://${attachment.name}`;
+  const thumbnailUrl = `attachment://${attachment.thumbnailName}`;
   embed.setImage(url);
-  return { embed, files: [attachment.file] };
+  embed.setThumbnail(thumbnailUrl);
+  return { embed, files: [attachment.file, attachment.thumbnailFile] };
 }
 
 function visualReplyOptions(embed, key, extras = {}) {
