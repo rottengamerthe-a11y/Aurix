@@ -1,7 +1,9 @@
 ﻿require('dotenv').config();
 
+const fs = require('fs');
 const path = require('path');
 const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, PermissionsBitField, ModalBuilder, TextInputBuilder, TextInputStyle, AttachmentBuilder } = require('discord.js');
+const { Resvg } = require('@resvg/resvg-js');
 const mongoose = require('mongoose');
 const express = require('express');
 
@@ -427,9 +429,22 @@ function getLocalVisualAttachment(key) {
   const filename = LOCAL_VISUALS[key];
   if (!filename) return null;
 
+  const filePath = path.join(VISUAL_ASSET_DIR, filename);
+  if (!fs.existsSync(filePath)) return null;
+
+  const svg = fs.readFileSync(filePath, 'utf8');
+  const pngName = filename.replace(/\.svg$/i, '.png');
+  const resvg = new Resvg(svg, {
+    fitTo: {
+      mode: 'width',
+      value: 1200
+    }
+  });
+  const png = resvg.render().asPng();
+
   return {
-    name: filename,
-    file: new AttachmentBuilder(path.join(VISUAL_ASSET_DIR, filename), { name: filename })
+    name: pngName,
+    file: new AttachmentBuilder(png, { name: pngName })
   };
 }
 
@@ -441,7 +456,6 @@ function withLocalVisual(embed, key) {
 
   const url = `attachment://${attachment.name}`;
   embed.setImage(url);
-  embed.setThumbnail(url);
   return { embed, files: [attachment.file] };
 }
 
