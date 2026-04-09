@@ -7,6 +7,24 @@ const { Resvg } = require('@resvg/resvg-js');
 const mongoose = require('mongoose');
 const express = require('express');
 
+const requiredEnvVars = ['TOKEN', 'MONGO_URI'];
+const missingEnvVars = requiredEnvVars.filter((key) => !process.env[key]);
+const PORT = Number(process.env.PORT) || 3000;
+
+if (missingEnvVars.length > 0) {
+  console.error(`Missing required environment variables: ${missingEnvVars.join(', ')}`);
+  console.error('Create a .env file in the project root before starting the bot.');
+  process.exit(1);
+}
+
+process.on('unhandledRejection', (error) => {
+  console.error('Unhandled promise rejection:', error);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught exception:', error);
+});
+
 // ================= DATABASE =================
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('MongoDB Connected'))
@@ -4037,14 +4055,14 @@ client.on('interactionCreate', async (interaction) => {
     battle.turn = enemyId;
 
     if (battle.hp[enemyId] <= 0) {
-      user.wins++;
+      attacker.wins++;
       defender.losses++;
-      const auraResult = addAura(user, 10000, 'aura');
-      const xpResult = addXp(user, 150);
-      const clanXpResult = await addClanXp(user.clan, 75);
-      xpResult.level = user.level;
+      const auraResult = addAura(attacker, 10000, 'aura');
+      const xpResult = addXp(attacker, 150);
+      const clanXpResult = await addClanXp(attacker.clan, 75);
+      xpResult.level = attacker.level;
 
-      await user.save();
+      await attacker.save();
       await defender.save();
       battles.delete(interaction.user.id);
       battles.delete(enemyId);
@@ -4163,14 +4181,14 @@ client.on('interactionCreate', async (interaction) => {
     battle.turn = enemyId;
 
     if (battle.hp[enemyId] <= 0) {
-      user.wins++;
+      attacker.wins++;
       defender.losses++;
-      const auraResult = addAura(user, 10000, 'aura');
-      const xpResult = addXp(user, 150);
-      const clanXpResult = await addClanXp(user.clan, 75);
-      xpResult.level = user.level;
+      const auraResult = addAura(attacker, 10000, 'aura');
+      const xpResult = addXp(attacker, 150);
+      const clanXpResult = await addClanXp(attacker.clan, 75);
+      xpResult.level = attacker.level;
 
-      await user.save();
+      await attacker.save();
       await defender.save();
       battles.delete(interaction.user.id);
       battles.delete(enemyId);
@@ -4395,11 +4413,12 @@ client.on('interactionCreate', async (interaction) => {
 // ================= EXPRESS WEB =================
 const app = express();
 app.get('/', (req, res) => res.send('Bot running'));
+app.get('/healthz', (req, res) => res.status(200).send('ok'));
 app.get('/api/leaderboard', async (req, res) => {
   const top = await User.find().sort({ aura: -1 }).limit(10);
   res.json(top);
 });
-app.listen(3000, () => console.log('Web API running on port 3000'));
+app.listen(PORT, () => console.log(`Web API running on port ${PORT}`));
 
 // ================= READY =================
 client.on('guildCreate', async (guild) => {
