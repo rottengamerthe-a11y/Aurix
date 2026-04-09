@@ -366,6 +366,32 @@ const LOCAL_VISUAL_THUMBNAILS = {
   boss_oracle: 'emblem-boss.svg'
 };
 
+const THEME_EMBLEM_FILES = {
+  default: 'emblem-default.svg',
+  help: 'emblem-help.svg',
+  core: 'emblem-core.svg',
+  economy: 'emblem-economy.svg',
+  skills: 'emblem-skills.svg',
+  clans: 'emblem-clan.svg',
+  bosses: 'emblem-boss.svg',
+  pvp: 'emblem-pvp.svg',
+  success: 'emblem-success.svg',
+  alert: 'emblem-alert.svg'
+};
+
+const THEME_BANNER_FILES = {
+  default: 'help-summary.svg',
+  help: 'help-summary.svg',
+  core: 'help-core.svg',
+  economy: 'help-core.svg',
+  skills: 'help-skills.svg',
+  clans: 'clan-hall.svg',
+  bosses: 'boss-codex.svg',
+  pvp: 'pvp-battle.svg',
+  success: 'pvp-victory.svg',
+  alert: 'help-bosses.svg'
+};
+
 const VISUAL_THEME_LIBRARY = {
   default: {
     thumbnail: process.env.VISUAL_DEFAULT_THUMBNAIL || 'https://dummyimage.com/256x256/111827/f59e0b.png&text=Aura',
@@ -375,6 +401,11 @@ const VISUAL_THEME_LIBRARY = {
     thumbnail: process.env.VISUAL_HELP_THUMBNAIL || 'https://dummyimage.com/256x256/0f172a/38bdf8.png&text=Help',
     banner: process.env.VISUAL_HELP_BANNER || 'https://dummyimage.com/1200x360/0f172a/38bdf8.png&text=Help+Center',
     animation: process.env.VISUAL_HELP_ANIMATION || null
+  },
+  core: {
+    thumbnail: process.env.VISUAL_CORE_THUMBNAIL || 'https://dummyimage.com/256x256/0b1423/86efac.png&text=Core',
+    banner: process.env.VISUAL_CORE_BANNER || 'https://dummyimage.com/1200x360/0b1423/86efac.png&text=Core+Commands',
+    animation: process.env.VISUAL_CORE_ANIMATION || null
   },
   economy: {
     thumbnail: process.env.VISUAL_ECONOMY_THUMBNAIL || 'https://dummyimage.com/256x256/052e16/22c55e.png&text=Aura',
@@ -419,10 +450,11 @@ function pickVisualTheme(title = '', description = '') {
   if (content.includes('help')) return 'help';
   if (content.includes('boss') || content.includes('raid')) return 'bosses';
   if (content.includes('clan')) return 'clans';
+  if (content.includes('spin') || content.includes('coinflip') || content.includes('balance') || content.includes('rank') || content.includes('level') || content.includes('leaderboard') || content.includes('inventory') || content.includes('stats') || content.includes('profile')) return 'core';
   if (content.includes('skill') || content.includes('shop') || content.includes('crate') || content.includes('boost')) return 'skills';
   if (content.includes('pvp') || content.includes('duel') || content.includes('battle')) return 'pvp';
   if (content.includes('warning') || content.includes('invalid') || content.includes('cooldown') || content.includes('alert')) return 'alert';
-  if (content.includes('daily') || content.includes('vault') || content.includes('rank') || content.includes('level') || content.includes('balance') || content.includes('leaderboard') || content.includes('inventory') || content.includes('stats') || content.includes('coinflip') || content.includes('spin')) return 'economy';
+  if (content.includes('daily') || content.includes('vault') || content.includes('interest') || content.includes('deposit')) return 'economy';
   if (content.includes('complete') || content.includes('joined') || content.includes('accepted') || content.includes('activated') || content.includes('victory') || content.includes('won') || content.includes('reward')) return 'success';
 
   return 'default';
@@ -479,6 +511,46 @@ function getLocalVisualAttachment(key) {
   };
 }
 
+function getThemeEmblemAttachment(theme = 'default') {
+  const emblemFilename = THEME_EMBLEM_FILES[theme] || THEME_EMBLEM_FILES.default;
+  const emblemPath = path.join(VISUAL_ASSET_DIR, emblemFilename);
+  if (!fs.existsSync(emblemPath)) return null;
+
+  const svg = fs.readFileSync(emblemPath, 'utf8');
+  const pngName = `theme-${theme}.png`;
+  const resvg = new Resvg(svg, {
+    fitTo: {
+      mode: 'width',
+      value: 256
+    }
+  });
+
+  return {
+    name: pngName,
+    file: new AttachmentBuilder(resvg.render().asPng(), { name: pngName })
+  };
+}
+
+function getThemeBannerAttachment(theme = 'default') {
+  const bannerFilename = THEME_BANNER_FILES[theme] || THEME_BANNER_FILES.default;
+  const bannerPath = path.join(VISUAL_ASSET_DIR, bannerFilename);
+  if (!fs.existsSync(bannerPath)) return null;
+
+  const svg = fs.readFileSync(bannerPath, 'utf8');
+  const pngName = `banner-${theme}.png`;
+  const resvg = new Resvg(svg, {
+    fitTo: {
+      mode: 'width',
+      value: 1200
+    }
+  });
+
+  return {
+    name: pngName,
+    file: new AttachmentBuilder(resvg.render().asPng(), { name: pngName })
+  };
+}
+
 function withLocalVisual(embed, key) {
   const attachment = getLocalVisualAttachment(key);
   if (!attachment) {
@@ -501,6 +573,72 @@ function visualReplyOptions(embed, key, extras = {}) {
   }
 
   return payload;
+}
+
+function normalizeReplyPayload(payload) {
+  if (!payload) return payload;
+  if (typeof payload === 'string') {
+    const theme = pickVisualTheme('', payload);
+    const embed = new EmbedBuilder()
+      .setColor(theme === 'alert' ? EMBED_COLORS.danger : EMBED_COLORS.info)
+      .setTitle('Aura Realms')
+      .setDescription(payload)
+      .setTimestamp();
+
+    return { embeds: [applyEmbedVisuals(embed, { description: payload, theme })] };
+  }
+  if (Array.isArray(payload)) return payload;
+  return { ...payload };
+}
+
+function decorateReplyPayload(payload) {
+  const normalized = normalizeReplyPayload(payload);
+  if (!normalized || typeof normalized === 'string' || Array.isArray(normalized)) return normalized;
+  if (!Array.isArray(normalized.embeds) || normalized.embeds.length === 0) return normalized;
+  if (Array.isArray(normalized.files) && normalized.files.length > 0) return normalized;
+
+  const files = [];
+
+  for (const embed of normalized.embeds) {
+    if (!embed) continue;
+
+    const imageUrl = embed.data?.image?.url || '';
+    const thumbnailUrl = embed.data?.thumbnail?.url || '';
+    if (String(imageUrl).startsWith('attachment://') || String(thumbnailUrl).startsWith('attachment://')) {
+      continue;
+    }
+
+    const title = embed.data?.title || '';
+    const description = embed.data?.description || '';
+    const theme = pickVisualTheme(title, description);
+    const emblem = getThemeEmblemAttachment(theme);
+    const banner = getThemeBannerAttachment(theme);
+    if (!emblem && !banner) continue;
+
+    if (emblem) {
+      embed.setThumbnail(`attachment://${emblem.name}`);
+      files.push(emblem.file);
+    }
+
+    if (banner) {
+      embed.setImage(`attachment://${banner.name}`);
+      files.push(banner.file);
+    }
+  }
+
+  if (files.length === 0) return normalized;
+  normalized.files = files;
+  return normalized;
+}
+
+function wrapReplyMethod(target, methodName) {
+  if (!target || typeof target[methodName] !== 'function') return;
+  if (target[methodName].__auraVisualWrapped) return;
+
+  const original = target[methodName].bind(target);
+  const wrapped = (payload, ...rest) => original(decorateReplyPayload(payload), ...rest);
+  wrapped.__auraVisualWrapped = true;
+  target[methodName] = wrapped;
 }
 
 function getHelpVisualKey(sectionKey = '') {
@@ -565,13 +703,19 @@ function infoEmbed(message, title, description) {
 }
 
 function interactionNoticeEmbed(title, description, color = EMBED_COLORS.info) {
+  const theme = color === EMBED_COLORS.danger
+    ? 'alert'
+    : color === EMBED_COLORS.success
+      ? 'success'
+      : null;
   const embed = new EmbedBuilder()
     .setColor(color)
     .setTitle(title)
     .setDescription(description)
+    .setFooter({ text: 'Aura Realms • Interaction' })
     .setTimestamp();
 
-  return applyEmbedVisuals(embed, { title, description });
+  return applyEmbedVisuals(embed, { title, description, theme });
 }
 
 function cooldown(user, key, time) {
@@ -1468,6 +1612,7 @@ async function rewardClanBossRaid(raid) {
 
 // ================= COMMAND HANDLER =================
 client.on('messageCreate', async (message) => {
+  wrapReplyMethod(message, 'reply');
   if (message.author.bot) return;
   if (!message.guild) return;
 
@@ -2278,17 +2423,17 @@ client.on('messageCreate', async (message) => {
 
     if (subcommand === 'join') {
       const clanName = normalizeClanName(args.slice(1).join(' '));
-      if (!clanName) return message.reply('Enter a clan name to join. Example: !clan join Shadow Guild');
-      if (user.clan) return message.reply(`You are already in **${user.clan}**. Leave it first before joining another clan.`);
+      if (!clanName) return message.reply({ embeds: [infoEmbed(message, 'Clan Join Usage', 'Enter a clan name to join.\nExample: `!clan join Shadow Guild`')] });
+      if (user.clan) return message.reply({ embeds: [warningEmbed(message, 'Already In Clan', `You are already in **${user.clan}**. Leave it first before joining another clan.`)] });
 
       const existingClan = await User.findOne({ clan: new RegExp(`^${clanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') });
-      if (!existingClan) return message.reply('That clan does not exist.');
+      if (!existingClan) return message.reply({ embeds: [warningEmbed(message, 'Clan Not Found', 'That clan does not exist.')] });
       const hasInvite = user.clanInvites.includes(existingClan.clan);
       const isPublicClan = (existingClan.clanPrivacy || 'private') === 'public';
-      if (!hasInvite && !isPublicClan) return message.reply(`You need an invite to join **${existingClan.clan}**. Use !clan accept ${existingClan.clan} after being invited.`);
+      if (!hasInvite && !isPublicClan) return message.reply({ embeds: [warningEmbed(message, 'Invite Required', `You need an invite to join **${existingClan.clan}**. Use \`!clan accept ${existingClan.clan}\` after being invited.`)] });
       const clanPerks = getClanLevelData(existingClan.clanLevel || 1).perks;
       const memberCount = await User.countDocuments({ clan: existingClan.clan });
-      if (memberCount >= clanPerks.memberCap) return message.reply(`**${existingClan.clan}** is full. Member cap: ${clanPerks.memberCap}.`);
+      if (memberCount >= clanPerks.memberCap) return message.reply({ embeds: [warningEmbed(message, 'Clan Full', `**${existingClan.clan}** is full. Member cap: ${clanPerks.memberCap}.`)] });
 
       user.clan = existingClan.clan;
       user.clanRole = 'member';
@@ -2310,22 +2455,22 @@ client.on('messageCreate', async (message) => {
 
     if (subcommand === 'accept') {
       const clanName = normalizeClanName(args.slice(1).join(' '));
-      if (!clanName) return message.reply('Enter a clan name to accept. Example: !clan accept Shadow Guild');
-      if (user.clan) return message.reply(`You are already in **${user.clan}**.`);
+      if (!clanName) return message.reply({ embeds: [infoEmbed(message, 'Clan Accept Usage', 'Enter a clan name to accept.\nExample: `!clan accept Shadow Guild`')] });
+      if (user.clan) return message.reply({ embeds: [warningEmbed(message, 'Already In Clan', `You are already in **${user.clan}**.`)] });
 
       const inviteName = user.clanInvites.find(invite => invite.toLowerCase() === clanName.toLowerCase());
-      if (!inviteName) return message.reply('You do not have an invite to that clan.');
+      if (!inviteName) return message.reply({ embeds: [warningEmbed(message, 'Invite Missing', 'You do not have an invite to that clan.')] });
 
       const existingClan = await User.findOne({ clan: inviteName });
       if (!existingClan) {
         user.clanInvites = user.clanInvites.filter(invite => invite !== inviteName);
         await user.save();
-        return message.reply('That clan no longer exists.');
+        return message.reply({ embeds: [warningEmbed(message, 'Clan Missing', 'That clan no longer exists.')] });
       }
 
       const clanPerks = getClanLevelData(existingClan.clanLevel || 1).perks;
       const memberCount = await User.countDocuments({ clan: existingClan.clan });
-      if (memberCount >= clanPerks.memberCap) return message.reply(`**${existingClan.clan}** is full. Member cap: ${clanPerks.memberCap}.`);
+      if (memberCount >= clanPerks.memberCap) return message.reply({ embeds: [warningEmbed(message, 'Clan Full', `**${existingClan.clan}** is full. Member cap: ${clanPerks.memberCap}.`)] });
 
       user.clan = existingClan.clan;
       user.clanRole = 'member';
@@ -2347,10 +2492,10 @@ client.on('messageCreate', async (message) => {
 
     if (subcommand === 'decline') {
       const clanName = normalizeClanName(args.slice(1).join(' '));
-      if (!clanName) return message.reply('Enter a clan name to decline. Example: !clan decline Shadow Guild');
+      if (!clanName) return message.reply({ embeds: [infoEmbed(message, 'Clan Decline Usage', 'Enter a clan name to decline.\nExample: `!clan decline Shadow Guild`')] });
 
       const inviteName = user.clanInvites.find(invite => invite.toLowerCase() === clanName.toLowerCase());
-      if (!inviteName) return message.reply('You do not have an invite to that clan.');
+      if (!inviteName) return message.reply({ embeds: [warningEmbed(message, 'Invite Missing', 'You do not have an invite to that clan.')] });
 
       user.clanInvites = user.clanInvites.filter(invite => invite !== inviteName);
       await user.save();
@@ -2361,20 +2506,20 @@ client.on('messageCreate', async (message) => {
     }
 
     if (subcommand === 'rename') {
-      if (!user.clan) return message.reply('You are not in a clan.');
-      if (user.clanRole !== 'owner') return message.reply('Only the clan owner can rename the clan.');
+      if (!user.clan) return message.reply({ embeds: [warningEmbed(message, 'No Clan', 'You are not in a clan.')] });
+      if (user.clanRole !== 'owner') return message.reply({ embeds: [warningEmbed(message, 'Owner Only', 'Only the clan owner can rename the clan.')] });
 
       const newClanName = normalizeClanName(args.slice(1).join(' '));
-      if (!newClanName) return message.reply('Enter a new clan name. Example: !clan rename Shadow Order');
-      if (!isValidClanName(newClanName)) return message.reply('Clan names must be 3-20 characters and use only letters, numbers, and spaces.');
-      if (newClanName.toLowerCase() === user.clan.toLowerCase()) return message.reply('That is already your clan name.');
+      if (!newClanName) return message.reply({ embeds: [infoEmbed(message, 'Clan Rename Usage', 'Enter a new clan name.\nExample: `!clan rename Shadow Order`')] });
+      if (!isValidClanName(newClanName)) return message.reply({ embeds: [warningEmbed(message, 'Invalid Clan Name', 'Clan names must be 3-20 characters and use only letters, numbers, and spaces.')] });
+      if (newClanName.toLowerCase() === user.clan.toLowerCase()) return message.reply({ embeds: [warningEmbed(message, 'Same Clan Name', 'That is already your clan name.')] });
       if (getActiveClanWar(user.clan) || hasPendingClanWar(user.clan) || getActiveClanBossRaid(user.clan)) {
-        return message.reply('Finish active clan wars, pending clan wars, and clan raids before renaming the clan.');
+        return message.reply({ embeds: [warningEmbed(message, 'Clan Busy', 'Finish active clan wars, pending clan wars, and clan raids before renaming the clan.')] });
       }
 
       const oldClanName = user.clan;
       const existingClan = await User.findOne({ clan: new RegExp(`^${newClanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') });
-      if (existingClan) return message.reply('That clan name is already taken.');
+      if (existingClan) return message.reply({ embeds: [warningEmbed(message, 'Clan Name Taken', 'That clan name is already taken.')] });
 
       await User.updateMany({ clan: oldClanName }, { $set: { clan: newClanName } });
 
@@ -2405,12 +2550,12 @@ client.on('messageCreate', async (message) => {
     }
 
     if (subcommand === 'privacy') {
-      if (!user.clan) return message.reply('You are not in a clan.');
-      if (user.clanRole !== 'owner') return message.reply('Only the clan owner can change clan privacy.');
+      if (!user.clan) return message.reply({ embeds: [warningEmbed(message, 'No Clan', 'You are not in a clan.')] });
+      if (user.clanRole !== 'owner') return message.reply({ embeds: [warningEmbed(message, 'Owner Only', 'Only the clan owner can change clan privacy.')] });
 
       const mode = (args[1] || '').toLowerCase();
       if (!['public', 'private'].includes(mode)) {
-        return message.reply('Choose `public` or `private`. Example: !clan privacy public');
+        return message.reply({ embeds: [infoEmbed(message, 'Clan Privacy Usage', 'Choose `public` or `private`.\nExample: `!clan privacy public`')] });
       }
 
       await syncClanSettings(user.clan, { clanPrivacy: mode });
@@ -2427,11 +2572,11 @@ client.on('messageCreate', async (message) => {
     }
 
     if (subcommand === 'leave') {
-      if (!user.clan) return message.reply('You are not in a clan.');
+      if (!user.clan) return message.reply({ embeds: [warningEmbed(message, 'No Clan', 'You are not in a clan.')] });
       if (user.clanRole === 'owner') {
         const otherMembers = await User.countDocuments({ clan: user.clan, userId: { $ne: user.userId } });
         if (otherMembers > 0) {
-          return message.reply('Transfer ownership before leaving your clan.');
+          return message.reply({ embeds: [warningEmbed(message, 'Transfer Ownership First', 'Transfer ownership before leaving your clan.')] });
         }
       }
 
@@ -2454,15 +2599,15 @@ client.on('messageCreate', async (message) => {
     }
 
     if (subcommand === 'transfer') {
-      if (!user.clan) return message.reply('You are not in a clan.');
-      if (user.clanRole !== 'owner') return message.reply('Only the clan owner can transfer ownership.');
+      if (!user.clan) return message.reply({ embeds: [warningEmbed(message, 'No Clan', 'You are not in a clan.')] });
+      if (user.clanRole !== 'owner') return message.reply({ embeds: [warningEmbed(message, 'Owner Only', 'Only the clan owner can transfer ownership.')] });
 
       const targetUser = message.mentions.users.first();
-      if (!targetUser) return message.reply('Mention a clan member to transfer ownership to.');
+      if (!targetUser) return message.reply({ embeds: [infoEmbed(message, 'Clan Transfer Usage', 'Mention a clan member to transfer ownership to.')] });
 
       const target = await User.findOne({ userId: targetUser.id, clan: user.clan });
-      if (!target) return message.reply('That user is not in your clan.');
-      if (target.userId === user.userId) return message.reply('You already own the clan.');
+      if (!target) return message.reply({ embeds: [warningEmbed(message, 'Member Not Found', 'That user is not in your clan.')] });
+      if (target.userId === user.userId) return message.reply({ embeds: [warningEmbed(message, 'Already Owner', 'You already own the clan.')] });
 
       user.clanRole = 'member';
       target.clanRole = 'owner';
@@ -2474,15 +2619,15 @@ client.on('messageCreate', async (message) => {
     }
 
     if (subcommand === 'kick') {
-      if (!user.clan) return message.reply('You are not in a clan.');
-      if (user.clanRole !== 'owner') return message.reply('Only the clan owner can kick members.');
+      if (!user.clan) return message.reply({ embeds: [warningEmbed(message, 'No Clan', 'You are not in a clan.')] });
+      if (user.clanRole !== 'owner') return message.reply({ embeds: [warningEmbed(message, 'Owner Only', 'Only the clan owner can kick members.')] });
 
       const targetUser = message.mentions.users.first();
-      if (!targetUser) return message.reply('Mention a clan member to kick.');
+      if (!targetUser) return message.reply({ embeds: [infoEmbed(message, 'Clan Kick Usage', 'Mention a clan member to kick.')] });
 
       const target = await User.findOne({ userId: targetUser.id, clan: user.clan });
-      if (!target) return message.reply('That user is not in your clan.');
-      if (target.clanRole === 'owner') return message.reply('You cannot kick the clan owner.');
+      if (!target) return message.reply({ embeds: [warningEmbed(message, 'Member Not Found', 'That user is not in your clan.')] });
+      if (target.clanRole === 'owner') return message.reply({ embeds: [warningEmbed(message, 'Invalid Target', 'You cannot kick the clan owner.')] });
 
       target.clan = null;
       target.clanRole = null;
@@ -2496,19 +2641,19 @@ client.on('messageCreate', async (message) => {
     }
 
     if (subcommand === 'war') {
-      if (!user.clan) return message.reply('You are not in a clan.');
+      if (!user.clan) return message.reply({ embeds: [warningEmbed(message, 'No Clan', 'You are not in a clan.')] });
       const warAction = (args[1] || '').toLowerCase();
 
       if (warAction === 'join') {
         const war = getActiveClanWar(user.clan);
-        if (!war) return message.reply('Your clan does not have an active clan war.');
-        if (war.started) return message.reply('This clan war has already started.');
+        if (!war) return message.reply({ embeds: [warningEmbed(message, 'No Active War', 'Your clan does not have an active clan war.')] });
+        if (war.started) return message.reply({ embeds: [warningEmbed(message, 'War Started', 'This clan war has already started.')] });
 
         const rosterKey = war.attackerClan === user.clan ? 'attackerParticipants' : 'defenderParticipants';
         const clanLevel = war.attackerClan === user.clan ? war.attackerLevel : war.defenderLevel;
         const cap = clanWarParticipantCap(clanLevel);
-        if (war[rosterKey].includes(user.userId)) return message.reply('You are already on the war roster.');
-        if (war[rosterKey].length >= cap) return message.reply(`Your clan war roster is full. Cap: ${cap}.`);
+        if (war[rosterKey].includes(user.userId)) return message.reply({ embeds: [warningEmbed(message, 'Already Joined', 'You are already on the war roster.')] });
+        if (war[rosterKey].length >= cap) return message.reply({ embeds: [warningEmbed(message, 'Roster Full', `Your clan war roster is full. Cap: ${cap}.`)] });
 
         war[rosterKey].push(user.userId);
         war.logs.push(`${message.author.username} joined the ${user.clan} war roster.`);
@@ -2520,8 +2665,8 @@ client.on('messageCreate', async (message) => {
 
       if (warAction === 'leave') {
         const war = getActiveClanWar(user.clan);
-        if (!war) return message.reply('Your clan does not have an active clan war.');
-        if (war.started) return message.reply('This clan war has already started.');
+        if (!war) return message.reply({ embeds: [warningEmbed(message, 'No Active War', 'Your clan does not have an active clan war.')] });
+        if (war.started) return message.reply({ embeds: [warningEmbed(message, 'War Started', 'This clan war has already started.')] });
 
         const rosterKey = war.attackerClan === user.clan ? 'attackerParticipants' : 'defenderParticipants';
         war[rosterKey] = war[rosterKey].filter(id => id !== user.userId);
@@ -2533,7 +2678,7 @@ client.on('messageCreate', async (message) => {
 
       if (warAction === 'status') {
         const war = getActiveClanWar(user.clan);
-        if (!war) return message.reply('Your clan does not have an active clan war.');
+        if (!war) return message.reply({ embeds: [warningEmbed(message, 'No Active War', 'Your clan does not have an active clan war.')] });
 
         const attackerCap = clanWarParticipantCap(war.attackerLevel);
         const defenderCap = clanWarParticipantCap(war.defenderLevel);
@@ -2552,15 +2697,15 @@ client.on('messageCreate', async (message) => {
 
       if (warAction === 'start') {
         const war = getActiveClanWar(user.clan);
-        if (!war) return message.reply('Your clan does not have an active clan war.');
-        if (user.clanRole !== 'owner') return message.reply('Only clan owners can start clan wars.');
-        if (war.started) return message.reply('This clan war has already started.');
+        if (!war) return message.reply({ embeds: [warningEmbed(message, 'No Active War', 'Your clan does not have an active clan war.')] });
+        if (user.clanRole !== 'owner') return message.reply({ embeds: [warningEmbed(message, 'Owner Only', 'Only clan owners can start clan wars.')] });
+        if (war.started) return message.reply({ embeds: [warningEmbed(message, 'War Started', 'This clan war has already started.')] });
         if (user.userId !== war.attackerOwnerId && user.userId !== war.defenderOwnerId) {
-          return message.reply('Only the two clan owners can start this war.');
+          return message.reply({ embeds: [warningEmbed(message, 'Owner Only', 'Only the two clan owners can start this war.')] });
         }
 
         if (war.attackerParticipants.length === 0 || war.defenderParticipants.length === 0) {
-          return message.reply('Both clans need at least one participant before the war can start.');
+          return message.reply({ embeds: [warningEmbed(message, 'Need Rosters', 'Both clans need at least one participant before the war can start.')] });
         }
 
         war.started = true;
@@ -2578,19 +2723,19 @@ client.on('messageCreate', async (message) => {
         return message.reply(visualReplyOptions(embed, getClanVisualKey(embed.data.title), { components: [] }));
       }
 
-      if (user.clanRole !== 'owner') return message.reply('Only the clan owner can start a clan war.');
-      if (getActiveClanWar(user.clan)) return message.reply('Your clan already has an active clan war.');
+      if (user.clanRole !== 'owner') return message.reply({ embeds: [warningEmbed(message, 'Owner Only', 'Only the clan owner can start a clan war.')] });
+      if (getActiveClanWar(user.clan)) return message.reply({ embeds: [warningEmbed(message, 'War Already Active', 'Your clan already has an active clan war.')] });
 
       const targetClanName = normalizeClanName(args.slice(1).join(' '));
-      if (!targetClanName) return message.reply('Enter a clan name to challenge. Example: !clan war Shadow Guild');
-      if (targetClanName.toLowerCase() === user.clan.toLowerCase()) return message.reply('You cannot challenge your own clan.');
+      if (!targetClanName) return message.reply({ embeds: [infoEmbed(message, 'Clan War Usage', 'Enter a clan name to challenge.\nExample: `!clan war Shadow Guild`')] });
+      if (targetClanName.toLowerCase() === user.clan.toLowerCase()) return message.reply({ embeds: [warningEmbed(message, 'Invalid Target', 'You cannot challenge your own clan.')] });
 
       const targetSummary = await getClanSummary(targetClanName);
-      if (!targetSummary) return message.reply('That clan does not exist.');
-      if (getActiveClanWar(targetSummary.name)) return message.reply('That clan already has an active clan war.');
+      if (!targetSummary) return message.reply({ embeds: [warningEmbed(message, 'Clan Not Found', 'That clan does not exist.')] });
+      if (getActiveClanWar(targetSummary.name)) return message.reply({ embeds: [warningEmbed(message, 'War Already Active', 'That clan already has an active clan war.')] });
 
       const targetOwner = targetSummary.members.find(member => member.clanRole === 'owner');
-      if (!targetOwner) return message.reply('That clan does not currently have an owner.');
+      if (!targetOwner) return message.reply({ embeds: [warningEmbed(message, 'Owner Missing', 'That clan does not currently have an owner.')] });
 
       const warKey = `${user.clan}:${targetSummary.name}`;
       pendingClanWars.set(warKey, {
@@ -2621,10 +2766,10 @@ client.on('messageCreate', async (message) => {
     if (subcommand === 'info') {
       const requestedName = normalizeClanName(args.slice(1).join(' '));
       const clanName = requestedName || user.clan;
-      if (!clanName) return message.reply('Enter a clan name or join a clan first. Example: !clan info Shadow Guild');
+      if (!clanName) return message.reply({ embeds: [infoEmbed(message, 'Clan Info Usage', 'Enter a clan name or join a clan first.\nExample: `!clan info Shadow Guild`')] });
 
       const summary = await getClanSummary(clanName);
-      if (!summary) return message.reply('That clan was not found.');
+      if (!summary) return message.reply({ embeds: [warningEmbed(message, 'Clan Not Found', 'That clan was not found.')] });
       const clanData = getClanLevelData(summary.members[0].clanLevel || 1);
       const clanOwner = summary.members.find(member => member.clanRole === 'owner');
 
@@ -2665,7 +2810,7 @@ client.on('messageCreate', async (message) => {
 
     if (subcommand === 'top') {
       const clanUsers = await User.find({ clan: { $ne: null } }).sort({ clan: 1 });
-      if (clanUsers.length === 0) return message.reply('No clans exist yet.');
+      if (clanUsers.length === 0) return message.reply({ embeds: [infoEmbed(message, 'No Clans Yet', 'No clans exist yet.')] });
 
       const clanMap = new Map();
       for (const member of clanUsers) {
@@ -2726,6 +2871,9 @@ client.on('messageCreate', async (message) => {
 
 // ================= BUTTON-BASED PVP =================
 client.on('interactionCreate', async (interaction) => {
+  wrapReplyMethod(interaction, 'reply');
+  wrapReplyMethod(interaction, 'followUp');
+  wrapReplyMethod(interaction, 'editReply');
   if (!interaction.isButton()) return;
   if (!interaction.guild) {
     return interaction.reply({ embeds: [interactionNoticeEmbed('Server Only', 'These buttons can only be used inside a server.', EMBED_COLORS.danger)], ephemeral: true });
@@ -4056,6 +4204,9 @@ client.on('interactionCreate', async (interaction) => {
 });
 
 client.on('interactionCreate', async (interaction) => {
+  wrapReplyMethod(interaction, 'reply');
+  wrapReplyMethod(interaction, 'followUp');
+  wrapReplyMethod(interaction, 'editReply');
   if (!interaction.isModalSubmit()) return;
   if (!interaction.guild) {
     return interaction.reply({ embeds: [interactionNoticeEmbed('Server Only', 'These forms can only be used inside a server.', EMBED_COLORS.danger)], ephemeral: true });
