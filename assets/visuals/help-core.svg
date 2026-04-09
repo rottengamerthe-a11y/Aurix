@@ -1,10 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420">
   <defs>
-    <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#0f172a"/>
-      <stop offset="100%" stop-color="#14532d"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#07131f"/>
+      <stop offset="58%" stop-color="#10334d"/>
+      <stop offset="100%" stop-color="#154229"/>
     </linearGradient>
-    <filter id="glow">
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
       <feGaussianBlur stdDeviation="8" result="blur"/>
       <feMerge>
         <feMergeNode in="blur"/>
@@ -12,21 +13,35 @@
       </feMerge>
     </filter>
   </defs>
-  <rect width="1200" height="420" fill="url(#grad)"/>
-  <rect x="70" y="75" width="360" height="250" rx="28" fill="#052e16" opacity="0.82"/>
-  <rect x="54" y="54" width="1092" height="312" rx="30" fill="none" stroke="#86efac" stroke-opacity="0.28" stroke-width="2.5" filter="url(#glow)"/>
-  <path d="M562 110h180v34H562z" fill="#22c55e" opacity="0.2" filter="url(#glow)"/>
-  <path d="M562 160h256v20H562z" fill="#86efac" opacity="0.16" filter="url(#glow)"/>
-  <path d="M562 198h212v20H562z" fill="#86efac" opacity="0.14" filter="url(#glow)"/>
-  <path d="M564 268c36-34 81-34 117 0" fill="none" stroke="#86efac" stroke-width="6" stroke-linecap="round" filter="url(#glow)"/>
-  <path d="M724 252l14 28 31 4-22 20 5 30-28-15-28 15 5-30-22-20 31-4z" fill="#dcfce7" opacity="0.82" filter="url(#glow)"/>
-  <rect x="875" y="88" width="175" height="120" rx="24" fill="#14532d" opacity="0.45"/>
-  <path d="M905 122h115v16H905z" fill="#bbf7d0" opacity="0.9" filter="url(#glow)"/>
-  <path d="M905 152h87v12H905z" fill="#86efac" opacity="0.86" filter="url(#glow)"/>
-  <circle cx="1030" cy="150" r="14" fill="#fef08a" filter="url(#glow)"/>
-  <text x="110" y="155" fill="#dcfce7" font-size="60" font-family="Segoe UI, Arial, sans-serif" font-weight="700" filter="url(#glow)">Core</text>
-  <text x="110" y="205" fill="#86efac" font-size="26" font-family="Segoe UI, Arial, sans-serif">Economy, profile, vault,</text>
-  <text x="110" y="238" fill="#86efac" font-size="26" font-family="Segoe UI, Arial, sans-serif">daily rewards, and stats.</text>
-  <circle cx="930" cy="140" r="120" fill="#22c55e" opacity="0.2" filter="url(#glow)"/>
-  <circle cx="1010" cy="270" r="160" fill="#4ade80" opacity="0.13" filter="url(#glow)"/>
+  <rect width="1200" height="420" fill="url(#bg)"/>
+  <rect x="52" y="48" width="1096" height="324" rx="30" fill="none" stroke="#8fffd1" stroke-opacity="0.26" stroke-width="2.5" filter="url(#glow)"/>
+  <circle cx="940" cy="118" r="120" fill="#67e8f9" opacity="0.12" filter="url(#glow)"/>
+  <circle cx="1026" cy="300" r="144" fill="#4ade80" opacity="0.1" filter="url(#glow)"/>
+  <rect x="724" y="70" width="350" height="282" rx="34" fill="#071a14" opacity="0.34"/>
+  <rect x="782" y="108" width="128" height="170" rx="24" fill="#0a1a2a" stroke="#7dd3fc" stroke-width="3" filter="url(#glow)"/>
+  <rect x="798" y="126" width="30" height="60" rx="12" fill="#112f45"/>
+  <rect x="834" y="126" width="30" height="60" rx="12" fill="#112f45"/>
+  <rect x="870" y="126" width="24" height="60" rx="12" fill="#112f45"/>
+  <text x="813" y="166" text-anchor="middle" fill="#fef08a" font-size="26" font-family="Segoe UI, Arial, sans-serif" font-weight="700" filter="url(#glow)">7</text>
+  <text x="849" y="166" text-anchor="middle" fill="#86efac" font-size="24" font-family="Segoe UI, Arial, sans-serif" font-weight="700" filter="url(#glow)">A</text>
+  <text x="882" y="166" text-anchor="middle" fill="#7dd3fc" font-size="20" font-family="Segoe UI, Arial, sans-serif" font-weight="700" filter="url(#glow)">XP</text>
+  <circle cx="846" cy="226" r="28" fill="#facc15" opacity="0.92" filter="url(#glow)"/>
+  <path d="M836 226h20" stroke="#0f172a" stroke-width="5" stroke-linecap="round"/>
+  <path d="M846 216v20" stroke="#0f172a" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="950" cy="150" r="36" fill="#f59e0b" opacity="0.9" filter="url(#glow)"/>
+  <path d="M950 124c16 12 26 30 26 46s-10 34-26 46c-16-12-26-30-26-46s10-34 26-46z" fill="none" stroke="#fff7ed" stroke-width="4"/>
+  <path d="M940 150c8-8 22-8 30 0" fill="none" stroke="#fff7ed" stroke-width="4" stroke-linecap="round"/>
+  <path d="M930 238h120" stroke="#86efac" stroke-width="4" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M930 262h84" stroke="#67e8f9" stroke-width="4" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M932 314l28-42 26 24 34-56 22 28" fill="none" stroke="#8fffd1" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+  <text x="86" y="146" fill="#ecfeff" font-size="62" font-family="Segoe UI, Arial, sans-serif" font-weight="700" filter="url(#glow)">Core Commands</text>
+  <text x="86" y="206" fill="#b8fff0" font-size="28" font-family="Segoe UI, Arial, sans-serif">
+    <tspan x="86" dy="0">Spin, coinflip, balance, rank, level,</tspan>
+    <tspan x="86" dy="34">inventory, vault, daily rewards, and stats.</tspan>
+  </text>
+  <rect x="86" y="262" width="278" height="70" rx="18" fill="#081826" stroke="#67e8f9" stroke-width="3" filter="url(#glow)"/>
+  <text x="225" y="307" text-anchor="middle" fill="#7dd3fc" font-size="25" font-family="Segoe UI, Arial, sans-serif" filter="url(#glow)">Use !spin, !bal, !stats</text>
+  <circle cx="116" cy="86" r="9" fill="#fef08a" filter="url(#glow)"/>
+  <circle cx="146" cy="86" r="9" fill="#7dd3fc" filter="url(#glow)"/>
+  <circle cx="176" cy="86" r="9" fill="#86efac" filter="url(#glow)"/>
 </svg>

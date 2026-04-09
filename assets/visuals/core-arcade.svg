@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a0b1f"/>
+      <stop offset="52%" stop-color="#3b1366"/>
+      <stop offset="100%" stop-color="#8a2b0f"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="1200" height="420" fill="url(#bg)"/>
+  <rect x="52" y="48" width="1096" height="324" rx="30" fill="none" stroke="#f9a8d4" stroke-opacity="0.28" stroke-width="2.5" filter="url(#glow)"/>
+  <circle cx="946" cy="110" r="120" fill="#c084fc" opacity="0.14" filter="url(#glow)"/>
+  <circle cx="1030" cy="300" r="146" fill="#fb923c" opacity="0.12" filter="url(#glow)"/>
+  <rect x="760" y="76" width="286" height="270" rx="34" fill="#190b22" opacity="0.4"/>
+  <rect x="802" y="104" width="158" height="194" rx="28" fill="#140b1f" stroke="#f0abfc" stroke-width="3" filter="url(#glow)"/>
+  <rect x="822" y="128" width="34" height="74" rx="12" fill="#2b1240"/>
+  <rect x="864" y="128" width="34" height="74" rx="12" fill="#2b1240"/>
+  <rect x="906" y="128" width="34" height="74" rx="12" fill="#2b1240"/>
+  <text x="839" y="176" text-anchor="middle" fill="#fde68a" font-size="34" font-family="Segoe UI, Arial, sans-serif" font-weight="700" filter="url(#glow)">7</text>
+  <text x="881" y="176" text-anchor="middle" fill="#f9a8d4" font-size="30" font-family="Segoe UI, Arial, sans-serif" font-weight="700" filter="url(#glow)">A</text>
+  <text x="923" y="176" text-anchor="middle" fill="#67e8f9" font-size="26" font-family="Segoe UI, Arial, sans-serif" font-weight="700" filter="url(#glow)">XP</text>
+  <circle cx="882" cy="244" r="34" fill="#f59e0b" filter="url(#glow)"/>
+  <path d="M882 212c16 12 26 30 26 46s-10 34-26 46c-16-12-26-30-26-46s10-34 26-46z" fill="none" stroke="#fff7ed" stroke-width="4"/>
+  <path d="M872 244c8-8 22-8 30 0" fill="none" stroke="#fff7ed" stroke-width="4" stroke-linecap="round"/>
+  <path d="M966 228l38 14-36 14" fill="none" stroke="#fdba74" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+  <path d="M764 318c22-16 52-16 74 0" fill="none" stroke="#f9a8d4" stroke-width="6" stroke-linecap="round" filter="url(#glow)"/>
+  <text x="86" y="146" fill="#fff1fb" font-size="62" font-family="Segoe UI, Arial, sans-serif" font-weight="700" filter="url(#glow)">Spin &amp; Coinflip</text>
+  <text x="86" y="206" fill="#fbcfe8" font-size="28" font-family="Segoe UI, Arial, sans-serif">
+    <tspan x="86" dy="0">Fast-risk commands with instant Aura swings,</tspan>
+    <tspan x="86" dy="34">XP bursts, and arcade-style momentum.</tspan>
+  </text>
+  <rect x="86" y="262" width="280" height="70" rx="18" fill="#180c26" stroke="#f472b6" stroke-width="3" filter="url(#glow)"/>
+  <text x="226" y="307" text-anchor="middle" fill="#f9a8d4" font-size="25" font-family="Segoe UI, Arial, sans-serif" filter="url(#glow)">Use !spin or !coinflip</text>
+</svg>

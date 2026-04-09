@@ -333,6 +333,8 @@ const VISUAL_ASSET_DIR = path.join(__dirname, 'assets', 'visuals');
 const LOCAL_VISUALS = {
   help_summary: 'help-summary.svg',
   help_core: 'help-core.svg',
+  core_arcade: 'core-arcade.svg',
+  core_profile: 'core-profile.svg',
   help_skills: 'help-skills.svg',
   help_clans: 'help-clans.svg',
   help_bosses: 'help-bosses.svg',
@@ -351,6 +353,8 @@ const LOCAL_VISUALS = {
 const LOCAL_VISUAL_THUMBNAILS = {
   help_summary: 'emblem-help.svg',
   help_core: 'emblem-help.svg',
+  core_arcade: 'emblem-core-arcade.svg',
+  core_profile: 'emblem-core-profile.svg',
   help_skills: 'emblem-help.svg',
   help_clans: 'emblem-clan.svg',
   help_bosses: 'emblem-boss.svg',
@@ -658,6 +662,13 @@ function getPvpVisualKey(title = '') {
   if (normalized.includes('victory')) return 'pvp_victory';
   if (normalized.includes('challenge')) return 'pvp_challenge';
   return 'pvp_battle';
+}
+
+function getCoreVisualKey(title = '') {
+  const normalized = title.toLowerCase();
+
+  if (normalized.includes('spin') || normalized.includes('coinflip')) return 'core_arcade';
+  return 'core_profile';
 }
 
 function createEmbed(message, title, color = EMBED_COLORS.primary, options = {}) {
@@ -1682,7 +1693,7 @@ client.on('messageCreate', async (message) => {
         field('Clan XP', `+${clanXpResult.gained || 0}`),
         field('Progress', `${levelProgress(user)}${user.clan ? `\n${clanLevelProgress(user)}` : ''}`, false)
       );
-    return message.reply({ embeds: [embed] });
+    return message.reply(visualReplyOptions(embed, getCoreVisualKey(embed.data.title)));
   }
 
   if (message.content.startsWith('!coinflip')) {
@@ -1725,7 +1736,7 @@ client.on('messageCreate', async (message) => {
         field('Aura', won ? `+${auraWon}` : 'No reward'),
         field('XP / Clan XP', won ? `+${xpWon} XP • +${clanXpWon} Clan XP` : 'No reward', false)
       );
-    return message.reply({ embeds: [embed] });
+    return message.reply(visualReplyOptions(embed, getCoreVisualKey(embed.data.title)));
 }
 
   if (message.content.startsWith('!pvp')) {
@@ -1774,7 +1785,7 @@ client.on('messageCreate', async (message) => {
       embed.setDescription(`Vault interest applied: +${vaultInterest.applied} Aura`);
     }
 
-    return message.reply({ embeds: [embed], components: buildEconomyRows(user) });
+    return message.reply(visualReplyOptions(embed, getCoreVisualKey(embed.data.title), { components: buildEconomyRows(user) }));
   }
 
   if (message.content === '!rank') {
@@ -1788,7 +1799,7 @@ client.on('messageCreate', async (message) => {
         field('Next Rank', nextRank ? nextRank.name : 'Maxed'),
         field('Progress', rankProgress(user), false)
       );
-    return message.reply({ embeds: [embed] });
+    return message.reply(visualReplyOptions(embed, getCoreVisualKey(embed.data.title)));
   }
 
   if (message.content === '!level') {
@@ -1799,7 +1810,7 @@ client.on('messageCreate', async (message) => {
         field('Skill Points', availableSkillPoints(user)),
         field('Progress', levelProgress(user), false)
       );
-    return message.reply({ embeds: [embed] });
+    return message.reply(visualReplyOptions(embed, getCoreVisualKey(embed.data.title)));
   }
 
   if (message.content === '!skills') {
@@ -1969,7 +1980,7 @@ client.on('messageCreate', async (message) => {
         field('Owned', `${countItem(user, shopItem.name)}`),
         field('Limit', shopItem.maxOwned)
       );
-    return message.reply({ embeds: [embed] });
+    return message.reply(visualReplyOptions(embed, getCoreVisualKey(embed.data.title)));
   }
 
   if (message.content.startsWith('!use')) {
@@ -2844,7 +2855,7 @@ client.on('messageCreate', async (message) => {
         field('Active Boosts', activeBoostSummary(user), false)
       );
     const inventoryRow = buildInventoryRow(user);
-    return message.reply({ embeds: [embed], components: inventoryRow ? [inventoryRow] : [] });
+    return message.reply(visualReplyOptions(embed, getCoreVisualKey(embed.data.title), { components: inventoryRow ? [inventoryRow] : [] }));
   }
 
   if (message.content === '!stats') {
@@ -2859,7 +2870,7 @@ client.on('messageCreate', async (message) => {
         field('Skills', `dmg ${user.skills.dmg} (${getSpecialization(user, 'dmg') || 'none'})\ndefense ${user.skills.defense} (${getSpecialization(user, 'defense') || 'none'})\nluck ${user.skills.luck} (${getSpecialization(user, 'luck') || 'none'})`, false),
         field('Boosts', activeBoostSummary(user), false)
       );
-    return message.reply({ embeds: [embed] });
+    return message.reply(visualReplyOptions(embed, getCoreVisualKey(embed.data.title)));
   }
 });
 

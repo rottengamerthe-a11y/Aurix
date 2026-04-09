@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#07131f"/>
+      <stop offset="55%" stop-color="#10334d"/>
+      <stop offset="100%" stop-color="#154229"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="1200" height="420" fill="url(#bg)"/>
+  <rect x="52" y="48" width="1096" height="324" rx="30" fill="none" stroke="#8fffd1" stroke-opacity="0.26" stroke-width="2.5" filter="url(#glow)"/>
+  <circle cx="938" cy="116" r="120" fill="#67e8f9" opacity="0.14" filter="url(#glow)"/>
+  <circle cx="1026" cy="300" r="146" fill="#4ade80" opacity="0.1" filter="url(#glow)"/>
+  <rect x="742" y="78" width="308" height="264" rx="34" fill="#071a14" opacity="0.38"/>
+  <rect x="780" y="106" width="230" height="178" rx="24" fill="#081826" stroke="#7dd3fc" stroke-width="3" filter="url(#glow)"/>
+  <circle cx="834" cy="154" r="24" fill="#fef08a" filter="url(#glow)"/>
+  <path d="M802 220c18-16 46-16 64 0" fill="none" stroke="#dcfce7" stroke-width="6" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M894 142h82" stroke="#86efac" stroke-width="6" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M894 174h64" stroke="#67e8f9" stroke-width="6" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M894 208h88" stroke="#bbf7d0" stroke-width="6" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M812 314l26-42 28 24 32-56 24 28 24-38" fill="none" stroke="#8fffd1" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+  <text x="86" y="146" fill="#ecfeff" font-size="62" font-family="Segoe UI, Arial, sans-serif" font-weight="700" filter="url(#glow)">Balance &amp; Stats</text>
+  <text x="86" y="206" fill="#b8fff0" font-size="28" font-family="Segoe UI, Arial, sans-serif">
+    <tspan x="86" dy="0">Wallet, vault, level, rank, inventory,</tspan>
+    <tspan x="86" dy="34">leaderboard, and player progress at a glance.</tspan>
+  </text>
+  <rect x="86" y="262" width="306" height="70" rx="18" fill="#081826" stroke="#67e8f9" stroke-width="3" filter="url(#glow)"/>
+  <text x="239" y="307" text-anchor="middle" fill="#7dd3fc" font-size="25" font-family="Segoe UI, Arial, sans-serif" filter="url(#glow)">Use !bal, !rank, !stats</text>
+</svg>
