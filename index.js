@@ -55,6 +55,11 @@ if (configuredMongoVars.length > 1) {
 }
 
 console.log(`[boot] build=${BUILD_MARKER} deploy=${DEPLOY_COMMIT}`);
+console.log(`[boot] publicBaseUrl=${PUBLIC_BASE_URL || 'not-set'}`);
+if (PUBLIC_BASE_URL) {
+  console.log(`[boot] visualTest.banner=${PUBLIC_BASE_URL}/visuals/local/core_profile/banner.png`);
+  console.log(`[boot] visualTest.thumb=${PUBLIC_BASE_URL}/visuals/local/core_profile/thumb.png`);
+}
 
 process.on('unhandledRejection', (error) => {
   console.error('Unhandled promise rejection:', error);
