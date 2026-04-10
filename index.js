@@ -716,7 +716,20 @@ function decorateReplyPayload(payload) {
 }
 
 function wrapReplyMethod(target, methodName) {
-  return;
+  if (!target || typeof target[methodName] !== 'function') return;
+
+  const wrappedFlag = `__aurix_wrapped_${methodName}`;
+  if (target[wrappedFlag]) return;
+
+  const originalMethod = target[methodName].bind(target);
+  target[methodName] = async function wrappedReplyMethod(...args) {
+    if (args.length > 0) {
+      args[0] = decorateReplyPayload(args[0]);
+    }
+
+    return originalMethod(...args);
+  };
+  target[wrappedFlag] = true;
 }
 
 function getHelpVisualKey(sectionKey = '') {
