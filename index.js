@@ -604,6 +604,19 @@ function getVisualCacheVersion(filePath) {
   return fs.statSync(filePath).mtimeMs.toString(36).replace('.', '');
 }
 
+function getLocalVisualUrlVersion(key) {
+  const filename = LOCAL_VISUALS[key];
+  if (!filename) return '0';
+
+  const filePath = path.join(VISUAL_ASSET_DIR, filename);
+  const thumbnailFilename = LOCAL_VISUAL_THUMBNAILS[key] || filename;
+  const thumbnailPath = path.join(VISUAL_ASSET_DIR, thumbnailFilename);
+  const bannerVersion = fs.existsSync(filePath) ? getVisualCacheVersion(filePath) : '0';
+  const thumbVersion = fs.existsSync(thumbnailPath) ? getVisualCacheVersion(thumbnailPath) : bannerVersion;
+
+  return `${bannerVersion}-${thumbVersion}`;
+}
+
 function getCachedRenderedPng(cacheKey, filePath, width) {
   const version = getVisualCacheVersion(filePath);
   const cached = renderedVisualCache.get(cacheKey);
@@ -730,7 +743,8 @@ function getPublicLocalVisualUrl(key, kind = 'banner') {
   if (!PUBLIC_BASE_URL) return null;
   if (!LOCAL_VISUALS[key]) return null;
   const normalizedKind = kind === 'thumb' ? 'thumb' : 'banner';
-  return `${PUBLIC_BASE_URL}/visuals/local/${encodeURIComponent(key)}/${normalizedKind}.png`;
+  const version = getLocalVisualUrlVersion(key);
+  return `${PUBLIC_BASE_URL}/visuals/local/${encodeURIComponent(key)}/${normalizedKind}.png?v=${encodeURIComponent(version)}`;
 }
 
 function withLocalVisual(embed, key) {
