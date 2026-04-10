@@ -127,6 +127,37 @@ async function getGuildConfig(guildId) {
   return config;
 }
 
+async function ensureValidBotChannel(guild, guildConfig) {
+  if (!guildConfig?.botChannelId) {
+    return { config: guildConfig, reset: false };
+  }
+
+  let channel = guild.channels.cache.get(guildConfig.botChannelId) || null;
+
+  if (!channel) {
+    try {
+      channel = await guild.channels.fetch(guildConfig.botChannelId);
+    } catch (error) {
+      channel = null;
+    }
+  }
+
+  const canUseChannel = Boolean(
+    channel &&
+    channel.isTextBased?.() &&
+    channel.permissionsFor(guild.members.me)?.has(PermissionsBitField.Flags.SendMessages)
+  );
+
+  if (canUseChannel) {
+    return { config: guildConfig, reset: false };
+  }
+
+  guildConfig.botChannelId = null;
+  await guildConfig.save();
+  console.warn(`Reset invalid bot channel for guild ${guild.id}.`);
+  return { config: guildConfig, reset: true };
+}
+
 // ================= CLIENT =================
 const client = new Client({
   intents: [
@@ -1675,7 +1706,10 @@ client.on('messageCreate', async (message) => {
 
   try {
     const isSetupCommand = message.content.toLowerCase().startsWith('!setup');
-    const guildConfig = await getGuildConfig(message.guild.id);
+    const { config: guildConfig, reset: botChannelReset } = await ensureValidBotChannel(
+      message.guild,
+      await getGuildConfig(message.guild.id)
+    );
 
     if (isSetupCommand) {
       if (!message.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
@@ -1711,6 +1745,15 @@ client.on('messageCreate', async (message) => {
         });
       }
       return;
+    }
+
+    if (botChannelReset && message.content.startsWith('!')) {
+      await message.reply({
+        embeds: [
+          createEmbed(message, 'Bot Channel Reset', EMBED_COLORS.info)
+            .setDescription('The previously configured bot channel was missing or no longer accessible, so the lock was cleared. Run `!setup #channel` to choose a new bot channel.')
+        ]
+      });
     }
 
     const user = await getUser(message.author.id);
@@ -2965,7 +3008,10 @@ client.on('interactionCreate', async (interaction) => {
     return interaction.reply({ embeds: [interactionNoticeEmbed('Server Only', 'These buttons can only be used inside a server.', EMBED_COLORS.danger)], ephemeral: true });
   }
 
-  const guildConfig = await getGuildConfig(interaction.guild.id);
+  const { config: guildConfig } = await ensureValidBotChannel(
+    interaction.guild,
+    await getGuildConfig(interaction.guild.id)
+  );
   if (guildConfig.botChannelId && interaction.channelId !== guildConfig.botChannelId) {
     return interaction.reply({
       embeds: [
@@ -4298,7 +4344,10 @@ client.on('interactionCreate', async (interaction) => {
     return interaction.reply({ embeds: [interactionNoticeEmbed('Server Only', 'These forms can only be used inside a server.', EMBED_COLORS.danger)], ephemeral: true });
   }
 
-  const guildConfig = await getGuildConfig(interaction.guild.id);
+  const { config: guildConfig } = await ensureValidBotChannel(
+    interaction.guild,
+    await getGuildConfig(interaction.guild.id)
+  );
   if (guildConfig.botChannelId && interaction.channelId !== guildConfig.botChannelId) {
     return interaction.reply({ embeds: [interactionNoticeEmbed('Wrong Channel', `Use bot interactions in <#${guildConfig.botChannelId}>.`, EMBED_COLORS.danger)], ephemeral: true });
   }
