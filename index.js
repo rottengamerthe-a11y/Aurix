@@ -635,9 +635,24 @@ function getThemeBannerAttachment(theme = 'default') {
   }
 }
 
+function runVisualSelfTest() {
+  try {
+    const emblem = getThemeEmblemAttachment('core');
+    const banner = getThemeBannerAttachment('core');
+    const local = getLocalVisualAttachment('core_profile');
+
+    console.log(
+      `[visuals] core emblem=${Boolean(emblem)} banner=${Boolean(banner)} local=${Boolean(local)}`
+    );
+  } catch (error) {
+    console.error('[visuals] self-test failed:', error);
+  }
+}
+
 function withLocalVisual(embed, key) {
   const attachment = getLocalVisualAttachment(key);
   if (!attachment) {
+    console.warn(`[visuals] local visual missing for key "${key}"`);
     return { embed, files: [] };
   }
 
@@ -4596,6 +4611,7 @@ client.on('guildCreate', async (guild) => {
 
 client.once('clientReady', () => {
   console.log(`Logged in as ${client.user.tag}`);
+  runVisualSelfTest();
 });
 
 client.login(DISCORD_TOKEN);
