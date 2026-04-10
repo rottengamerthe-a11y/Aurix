@@ -394,6 +394,7 @@ const EMBED_COLORS = {
 };
 
 const VISUAL_ASSET_DIR = path.join(__dirname, 'assets', 'visuals');
+const renderedVisualCache = new Map();
 const LOCAL_VISUALS = {
   help_summary: 'help-summary.svg',
   help_core: 'help-core.svg',
@@ -543,6 +544,30 @@ function applyEmbedVisuals(embed, { title = '', description = '', theme = null, 
   return embed;
 }
 
+function getVisualCacheVersion(filePath) {
+  return fs.statSync(filePath).mtimeMs.toString(36).replace('.', '');
+}
+
+function getCachedRenderedPng(cacheKey, filePath, width) {
+  const version = getVisualCacheVersion(filePath);
+  const cached = renderedVisualCache.get(cacheKey);
+
+  if (cached?.version === version) {
+    return { buffer: cached.buffer, version };
+  }
+
+  const svg = fs.readFileSync(filePath, 'utf8');
+  const buffer = new Resvg(svg, {
+    fitTo: {
+      mode: 'width',
+      value: width
+    }
+  }).render().asPng();
+
+  renderedVisualCache.set(cacheKey, { version, buffer });
+  return { buffer, version };
+}
+
 function getLocalVisualAttachment(key) {
   const filename = LOCAL_VISUALS[key];
   if (!filename) return null;
@@ -552,24 +577,15 @@ function getLocalVisualAttachment(key) {
   try {
     const thumbnailFilename = LOCAL_VISUAL_THUMBNAILS[key] || filename;
     const thumbnailPath = path.join(VISUAL_ASSET_DIR, thumbnailFilename);
-    const svg = fs.readFileSync(filePath, 'utf8');
-    const thumbnailSvg = fs.existsSync(thumbnailPath) ? fs.readFileSync(thumbnailPath, 'utf8') : svg;
-    const pngName = filename.replace(/\.svg$/i, '.png');
-    const thumbnailName = `thumb-${thumbnailFilename.replace(/\.svg$/i, '.png')}`;
-    const resvg = new Resvg(svg, {
-      fitTo: {
-        mode: 'width',
-        value: 1200
-      }
-    });
-    const thumbnailResvg = new Resvg(thumbnailSvg, {
-      fitTo: {
-        mode: 'width',
-        value: 256
-      }
-    });
-    const png = resvg.render().asPng();
-    const thumbnailPng = thumbnailResvg.render().asPng();
+    const { buffer: png, version } = getCachedRenderedPng(`local:${filename}:1200`, filePath, 1200);
+    const thumbnailSourcePath = fs.existsSync(thumbnailPath) ? thumbnailPath : filePath;
+    const { buffer: thumbnailPng, version: thumbnailVersion } = getCachedRenderedPng(
+      `local:${thumbnailFilename}:256`,
+      thumbnailSourcePath,
+      256
+    );
+    const pngName = `${filename.replace(/\.svg$/i, '')}-${version}.png`;
+    const thumbnailName = `thumb-${thumbnailFilename.replace(/\.svg$/i, '')}-${thumbnailVersion}.png`;
 
     return {
       name: pngName,
@@ -588,19 +604,12 @@ function getThemeEmblemAttachment(theme = 'default') {
   const emblemPath = path.join(VISUAL_ASSET_DIR, emblemFilename);
   if (!fs.existsSync(emblemPath)) return null;
   try {
-    const svg = fs.readFileSync(emblemPath, 'utf8');
-    const version = fs.statSync(emblemPath).mtimeMs.toString(36).replace('.', '');
+    const { buffer, version } = getCachedRenderedPng(`theme-emblem:${theme}:256`, emblemPath, 256);
     const pngName = `theme-${theme}-${version}.png`;
-    const resvg = new Resvg(svg, {
-      fitTo: {
-        mode: 'width',
-        value: 256
-      }
-    });
 
     return {
       name: pngName,
-      file: new AttachmentBuilder(resvg.render().asPng(), { name: pngName })
+      file: new AttachmentBuilder(buffer, { name: pngName })
     };
   } catch (error) {
     console.error(`Failed to render theme emblem "${theme}":`, error);
@@ -613,19 +622,12 @@ function getThemeBannerAttachment(theme = 'default') {
   const bannerPath = path.join(VISUAL_ASSET_DIR, bannerFilename);
   if (!fs.existsSync(bannerPath)) return null;
   try {
-    const svg = fs.readFileSync(bannerPath, 'utf8');
-    const version = fs.statSync(bannerPath).mtimeMs.toString(36).replace('.', '');
+    const { buffer, version } = getCachedRenderedPng(`theme-banner:${theme}:1200`, bannerPath, 1200);
     const pngName = `banner-${theme}-${version}.png`;
-    const resvg = new Resvg(svg, {
-      fitTo: {
-        mode: 'width',
-        value: 1200
-      }
-    });
 
     return {
       name: pngName,
-      file: new AttachmentBuilder(resvg.render().asPng(), { name: pngName })
+      file: new AttachmentBuilder(buffer, { name: pngName })
     };
   } catch (error) {
     console.error(`Failed to render theme banner "${theme}":`, error);
