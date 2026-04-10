@@ -2024,6 +2024,18 @@ client.on('messageCreate', async (message) => {
     return message.reply(visualReplyOptions(buildHelpSectionEmbed(message, selectedSection), getHelpVisualKey(selectedSection.key), { components: [buildHelpRow()] }));
   }
 
+  if (message.content === '!vtest') {
+    const spinEmbed = createEmbed(message, 'Slot Spin', EMBED_COLORS.success)
+      .setDescription('Visual debug: spin-style payload')
+      .addFields(field('Key', 'core_arcade'));
+    await message.reply(visualReplyOptions(spinEmbed, 'core_arcade'));
+
+    const depositEmbed = createEmbed(message, 'Vault Deposit', EMBED_COLORS.success)
+      .setDescription('Visual debug: deposit-style payload')
+      .addFields(field('Key', 'core_arcade'));
+    return message.reply(visualReplyOptions(depositEmbed, 'core_arcade'));
+  }
+
   if (message.content === '!spin') {
     const cd = cooldown(user, 'spin', 300000);
     if (cd) {
