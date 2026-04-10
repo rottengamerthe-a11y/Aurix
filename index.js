@@ -936,10 +936,10 @@ function getEconomyVisualKey(title = '') {
     normalized.includes('purchase') ||
     normalized.includes('boost')
   ) {
-    return 'economy_vault';
+    return 'core_arcade';
   }
 
-  return 'core_profile';
+  return 'core_arcade';
 }
 
 function getLocalVisualKeyForEmbed(title = '', description = '') {
