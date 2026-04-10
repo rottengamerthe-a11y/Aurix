@@ -63,12 +63,19 @@ process.on('warning', (warning) => {
   console.warn('Process warning:', warning);
 });
 
-const DISCORD_LOGIN_TIMEOUT_MS = 30000;
+const parsedDiscordLoginTimeoutMs = Number(process.env.DISCORD_LOGIN_TIMEOUT_MS);
+const DISCORD_LOGIN_TIMEOUT_MS = Number.isFinite(parsedDiscordLoginTimeoutMs)
+  ? Math.max(0, parsedDiscordLoginTimeoutMs)
+  : 0;
 let discordReady = false;
 let discordLoginWatchdog = null;
 
 function scheduleDiscordLoginWatchdog() {
   clearTimeout(discordLoginWatchdog);
+  if (DISCORD_LOGIN_TIMEOUT_MS === 0) {
+    console.log('Discord login watchdog disabled (`DISCORD_LOGIN_TIMEOUT_MS=0`). Waiting indefinitely for Discord ready.');
+    return;
+  }
   discordLoginWatchdog = setTimeout(() => {
     if (discordReady) return;
     console.error(`Discord login timed out after ${DISCORD_LOGIN_TIMEOUT_MS}ms. Exiting so the host can restart the bot.`);
