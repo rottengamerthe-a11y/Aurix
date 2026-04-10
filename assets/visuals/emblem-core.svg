@@ -13,18 +13,8 @@
     </filter>
   </defs>
   <rect width="256" height="256" rx="52" fill="url(#bg)"/>
-  <rect x="50" y="64" width="90" height="122" rx="22" fill="#0b2030" stroke="#7dd3fc" stroke-width="7" filter="url(#glow)"/>
-  <rect x="64" y="82" width="22" height="42" rx="10" fill="#112f45"/>
-  <rect x="90" y="82" width="22" height="42" rx="10" fill="#112f45"/>
-  <rect x="116" y="82" width="12" height="42" rx="6" fill="#112f45"/>
-  <text x="75" y="111" text-anchor="middle" fill="#fef08a" font-size="18" font-family="Segoe UI, Arial, sans-serif" font-weight="700" filter="url(#glow)">7</text>
-  <text x="101" y="111" text-anchor="middle" fill="#86efac" font-size="18" font-family="Segoe UI, Arial, sans-serif" font-weight="700" filter="url(#glow)">A</text>
-  <text x="122" y="111" text-anchor="middle" fill="#7dd3fc" font-size="11" font-family="Segoe UI, Arial, sans-serif" font-weight="700" filter="url(#glow)">XP</text>
-  <circle cx="95" cy="154" r="18" fill="#facc15" filter="url(#glow)"/>
-  <path d="M89 154h12" stroke="#0f172a" stroke-width="4" stroke-linecap="round"/>
-  <path d="M95 148v12" stroke="#0f172a" stroke-width="4" stroke-linecap="round"/>
-  <circle cx="182" cy="96" r="26" fill="#f59e0b" filter="url(#glow)"/>
-  <path d="M182 74c12 9 20 22 20 34s-8 25-20 34c-12-9-20-22-20-34s8-25 20-34z" fill="none" stroke="#fff7ed" stroke-width="4"/>
-  <path d="M174 96c6-6 16-6 22 0" fill="none" stroke="#fff7ed" stroke-width="4" stroke-linecap="round"/>
-  <path d="M156 174l18-26 16 14 22-34" fill="none" stroke="#8fffd1" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+  <circle cx="128" cy="96" r="26" fill="#f59e0b" filter="url(#glow)"/>
+  <path d="M128 74c12 9 20 22 20 34s-8 25-20 34c-12-9-20-22-20-34s8-25 20-34z" fill="none" stroke="#fff7ed" stroke-width="4"/>
+  <path d="M120 96c6-6 16-6 22 0" fill="none" stroke="#fff7ed" stroke-width="4" stroke-linecap="round"/>
+  <path d="M102 174l18-26 16 14 22-34" fill="none" stroke="#8fffd1" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
 </svg>
