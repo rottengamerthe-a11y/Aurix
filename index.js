@@ -1698,6 +1698,7 @@ client.on('messageCreate', async (message) => {
   wrapReplyMethod(message, 'reply');
   if (message.author.bot) return;
   if (!message.guild) return;
+  console.log(`[messageCreate] guild=${message.guild.id} channel=${message.channelId} author=${message.author.id} content=${JSON.stringify(message.content || '')}`);
   if (!message.content) {
     if (!loggedMissingMessageContentWarning) {
       loggedMissingMessageContentWarning = true;
@@ -1736,6 +1737,7 @@ client.on('messageCreate', async (message) => {
 
     if (guildConfig.botChannelId && message.channelId !== guildConfig.botChannelId) {
       if (message.content.startsWith('!')) {
+        console.warn(`[messageCreate] ignored wrong channel. configured=${guildConfig.botChannelId} actual=${message.channelId}`);
         return message.reply({
           embeds: [
             warningEmbed(
