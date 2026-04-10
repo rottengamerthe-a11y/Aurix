@@ -17,10 +17,16 @@ function getEnvValue(...keys) {
   return '';
 }
 
-const DISCORD_TOKEN = getEnvValue('TOKEN', 'DISCORD_TOKEN', 'BOT_TOKEN');
+const DISCORD_TOKEN = getEnvValue('DISCORD_TOKEN', 'TOKEN', 'BOT_TOKEN');
 const MONGO_URI = getEnvValue('MONGO_URI', 'MONGODB_URI', 'DATABASE_URL');
 const PORT = Number(process.env.PORT) || 3000;
 const missingEnvVars = [];
+const configuredTokenVars = ['DISCORD_TOKEN', 'TOKEN', 'BOT_TOKEN']
+  .map((key) => ({ key, value: getEnvValue(key) }))
+  .filter((entry) => entry.value);
+const configuredMongoVars = ['MONGO_URI', 'MONGODB_URI', 'DATABASE_URL']
+  .map((key) => ({ key, value: getEnvValue(key) }))
+  .filter((entry) => entry.value);
 
 if (!DISCORD_TOKEN) missingEnvVars.push('TOKEN or DISCORD_TOKEN');
 if (!MONGO_URI) missingEnvVars.push('MONGO_URI or MONGODB_URI');
@@ -29,6 +35,20 @@ if (missingEnvVars.length > 0) {
   console.error(`Missing required environment variables: ${missingEnvVars.join(', ')}`);
   console.error('Set them either in a local .env file or in your Render Environment settings.');
   process.exit(1);
+}
+
+if (configuredTokenVars.length > 1) {
+  const uniqueTokenValues = new Set(configuredTokenVars.map((entry) => entry.value));
+  if (uniqueTokenValues.size > 1) {
+    console.warn(`Multiple Discord token env vars are set with different values: ${configuredTokenVars.map((entry) => entry.key).join(', ')}. Using DISCORD_TOKEN priority.`);
+  }
+}
+
+if (configuredMongoVars.length > 1) {
+  const uniqueMongoValues = new Set(configuredMongoVars.map((entry) => entry.value));
+  if (uniqueMongoValues.size > 1) {
+    console.warn(`Multiple Mongo env vars are set with different values: ${configuredMongoVars.map((entry) => entry.key).join(', ')}. Using MONGO_URI priority.`);
+  }
 }
 
 process.on('unhandledRejection', (error) => {
