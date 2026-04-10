@@ -20,6 +20,7 @@ function getEnvValue(...keys) {
 const DISCORD_TOKEN = getEnvValue('DISCORD_TOKEN', 'TOKEN', 'BOT_TOKEN');
 const MONGO_URI = getEnvValue('MONGO_URI', 'MONGODB_URI', 'DATABASE_URL');
 const PORT = Number(process.env.PORT) || 3000;
+const PUBLIC_BASE_URL = getEnvValue('PUBLIC_BASE_URL', 'RENDER_EXTERNAL_URL').replace(/\/+$/, '');
 const missingEnvVars = [];
 const BUILD_MARKER = 'visual-debug-2026-04-10-1';
 const DEPLOY_COMMIT = getEnvValue('RENDER_GIT_COMMIT', 'RENDER_GIT_BRANCH') || 'local';
@@ -700,7 +701,23 @@ function runVisualSelfTest() {
   }
 }
 
+function getPublicLocalVisualUrl(key, kind = 'banner') {
+  if (!PUBLIC_BASE_URL) return null;
+  if (!LOCAL_VISUALS[key]) return null;
+  const normalizedKind = kind === 'thumb' ? 'thumb' : 'banner';
+  return `${PUBLIC_BASE_URL}/visuals/local/${encodeURIComponent(key)}/${normalizedKind}.png`;
+}
+
 function withLocalVisual(embed, key) {
+  const publicBannerUrl = getPublicLocalVisualUrl(key, 'banner');
+  const publicThumbUrl = getPublicLocalVisualUrl(key, 'thumb');
+  if (publicBannerUrl && publicThumbUrl) {
+    console.log(`[visuals] applying public visual key="${key}" banner="${publicBannerUrl}" thumbnail="${publicThumbUrl}" title="${embed.data?.title || ''}"`);
+    embed.setImage(publicBannerUrl);
+    embed.setThumbnail(publicThumbUrl);
+    return { embed, files: [] };
+  }
+
   const requestedAttachment = getLocalVisualAttachment(key);
   const attachment = requestedAttachment || (key === 'economy_vault' ? getLocalVisualAttachment('core_profile') : null);
   if (!attachment) {
@@ -4756,6 +4773,37 @@ client.on('interactionCreate', async (interaction) => {
 const app = express();
 app.get('/', (req, res) => res.send('Bot running'));
 app.get('/healthz', (req, res) => res.status(200).send('ok'));
+app.get('/visuals/local/:key/:kind.png', (req, res) => {
+  const key = String(req.params.key || '');
+  const kind = req.params.kind === 'thumb' ? 'thumb' : 'banner';
+  const filename = LOCAL_VISUALS[key];
+
+  if (!filename) {
+    return res.status(404).send('visual not found');
+  }
+
+  try {
+    const filePath = path.join(VISUAL_ASSET_DIR, filename);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).send('visual source missing');
+    }
+
+    const thumbnailFilename = LOCAL_VISUAL_THUMBNAILS[key] || filename;
+    const thumbnailPath = path.join(VISUAL_ASSET_DIR, thumbnailFilename);
+    const sourcePath = kind === 'thumb' && fs.existsSync(thumbnailPath) ? thumbnailPath : filePath;
+    const width = kind === 'thumb' ? 256 : 1200;
+    const cacheKey = `${kind === 'thumb' ? 'local-thumb' : 'local-banner'}:${key}:${width}`;
+    const { buffer, version } = getCachedRenderedPng(cacheKey, sourcePath, width);
+
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    res.setHeader('ETag', version);
+    return res.send(Buffer.from(buffer));
+  } catch (error) {
+    console.error(`[visuals] failed to serve public visual key="${key}" kind="${kind}"`, error);
+    return res.status(500).send('visual render failed');
+  }
+});
 app.get('/api/leaderboard', async (req, res) => {
   const top = await User.find().sort({ aura: -1 }).limit(10);
   res.json(top);
