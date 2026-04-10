@@ -463,52 +463,52 @@ const THEME_BANNER_FILES = {
 
 const VISUAL_THEME_LIBRARY = {
   default: {
-    thumbnail: process.env.VISUAL_DEFAULT_THUMBNAIL || 'https://dummyimage.com/256x256/111827/f59e0b.png&text=Aura',
-    banner: process.env.VISUAL_DEFAULT_BANNER || 'https://dummyimage.com/1200x360/111827/f59e0b.png&text=Aura+Realms'
+    thumbnail: process.env.VISUAL_DEFAULT_THUMBNAIL || null,
+    banner: process.env.VISUAL_DEFAULT_BANNER || null
   },
   help: {
-    thumbnail: process.env.VISUAL_HELP_THUMBNAIL || 'https://dummyimage.com/256x256/0f172a/38bdf8.png&text=Help',
-    banner: process.env.VISUAL_HELP_BANNER || 'https://dummyimage.com/1200x360/0f172a/38bdf8.png&text=Help+Center',
+    thumbnail: process.env.VISUAL_HELP_THUMBNAIL || null,
+    banner: process.env.VISUAL_HELP_BANNER || null,
     animation: process.env.VISUAL_HELP_ANIMATION || null
   },
   core: {
-    thumbnail: process.env.VISUAL_CORE_THUMBNAIL || 'https://dummyimage.com/256x256/0b1423/86efac.png&text=Core',
-    banner: process.env.VISUAL_CORE_BANNER || 'https://dummyimage.com/1200x360/0b1423/86efac.png&text=Core+Commands',
+    thumbnail: process.env.VISUAL_CORE_THUMBNAIL || null,
+    banner: process.env.VISUAL_CORE_BANNER || null,
     animation: process.env.VISUAL_CORE_ANIMATION || null
   },
   economy: {
-    thumbnail: process.env.VISUAL_ECONOMY_THUMBNAIL || 'https://dummyimage.com/256x256/052e16/22c55e.png&text=Aura',
-    banner: process.env.VISUAL_ECONOMY_BANNER || 'https://dummyimage.com/1200x360/052e16/22c55e.png&text=Economy+Hub',
+    thumbnail: process.env.VISUAL_ECONOMY_THUMBNAIL || null,
+    banner: process.env.VISUAL_ECONOMY_BANNER || null,
     animation: process.env.VISUAL_ECONOMY_ANIMATION || null
   },
   skills: {
-    thumbnail: process.env.VISUAL_SKILLS_THUMBNAIL || 'https://dummyimage.com/256x256/312e81/a78bfa.png&text=Skills',
-    banner: process.env.VISUAL_SKILLS_BANNER || 'https://dummyimage.com/1200x360/312e81/a78bfa.png&text=Skill+Tree',
+    thumbnail: process.env.VISUAL_SKILLS_THUMBNAIL || null,
+    banner: process.env.VISUAL_SKILLS_BANNER || null,
     animation: process.env.VISUAL_SKILLS_ANIMATION || null
   },
   clans: {
-    thumbnail: process.env.VISUAL_CLANS_THUMBNAIL || 'https://dummyimage.com/256x256/3f1d2e/f472b6.png&text=Clan',
-    banner: process.env.VISUAL_CLANS_BANNER || 'https://dummyimage.com/1200x360/3f1d2e/f472b6.png&text=Clan+Hall',
+    thumbnail: process.env.VISUAL_CLANS_THUMBNAIL || null,
+    banner: process.env.VISUAL_CLANS_BANNER || null,
     animation: process.env.VISUAL_CLANS_ANIMATION || null
   },
   bosses: {
-    thumbnail: process.env.VISUAL_BOSSES_THUMBNAIL || 'https://dummyimage.com/256x256/3f0d0d/ef4444.png&text=Boss',
-    banner: process.env.VISUAL_BOSSES_BANNER || 'https://dummyimage.com/1200x360/3f0d0d/ef4444.png&text=Boss+Encounter',
+    thumbnail: process.env.VISUAL_BOSSES_THUMBNAIL || null,
+    banner: process.env.VISUAL_BOSSES_BANNER || null,
     animation: process.env.VISUAL_BOSSES_ANIMATION || null
   },
   pvp: {
-    thumbnail: process.env.VISUAL_PVP_THUMBNAIL || 'https://dummyimage.com/256x256/450a0a/f97316.png&text=PvP',
-    banner: process.env.VISUAL_PVP_BANNER || 'https://dummyimage.com/1200x360/450a0a/f97316.png&text=PvP+Arena',
+    thumbnail: process.env.VISUAL_PVP_THUMBNAIL || null,
+    banner: process.env.VISUAL_PVP_BANNER || null,
     animation: process.env.VISUAL_PVP_ANIMATION || null
   },
   success: {
-    thumbnail: process.env.VISUAL_SUCCESS_THUMBNAIL || 'https://dummyimage.com/256x256/052e16/86efac.png&text=Win',
-    banner: process.env.VISUAL_SUCCESS_BANNER || 'https://dummyimage.com/1200x360/052e16/86efac.png&text=Victory',
+    thumbnail: process.env.VISUAL_SUCCESS_THUMBNAIL || null,
+    banner: process.env.VISUAL_SUCCESS_BANNER || null,
     animation: process.env.VISUAL_SUCCESS_ANIMATION || null
   },
   alert: {
-    thumbnail: process.env.VISUAL_ALERT_THUMBNAIL || 'https://dummyimage.com/256x256/450a0a/fca5a5.png&text=Alert',
-    banner: process.env.VISUAL_ALERT_BANNER || 'https://dummyimage.com/1200x360/450a0a/fca5a5.png&text=System+Alert',
+    thumbnail: process.env.VISUAL_ALERT_THUMBNAIL || null,
+    banner: process.env.VISUAL_ALERT_BANNER || null,
     animation: process.env.VISUAL_ALERT_ANIMATION || null
   }
 };
