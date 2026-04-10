@@ -755,6 +755,16 @@ function decorateReplyPayload(payload) {
 
     const title = embed.data?.title || '';
     const description = embed.data?.description || '';
+    const localVisualKey = getLocalVisualKeyForEmbed(title, description);
+    const localVisual = localVisualKey ? getLocalVisualAttachment(localVisualKey) : null;
+
+    if (localVisual) {
+      embed.setImage(`attachment://${localVisual.name}`);
+      embed.setThumbnail(`attachment://${localVisual.thumbnailName}`);
+      files.push(localVisual.file, localVisual.thumbnailFile);
+      continue;
+    }
+
     const theme = pickVisualTheme(title, description);
     const emblem = getThemeEmblemAttachment(theme);
     const banner = getThemeBannerAttachment(theme);
@@ -840,6 +850,54 @@ function getEconomyVisualKey(title = '') {
   }
 
   return 'core_profile';
+}
+
+function getLocalVisualKeyForEmbed(title = '', description = '') {
+  const content = `${title} ${description}`.toLowerCase();
+
+  if (content.includes('help')) {
+    if (content.includes('skill')) return 'help_skills';
+    if (content.includes('clan')) return 'help_clans';
+    if (content.includes('boss')) return 'help_bosses';
+    if (content.includes('core')) return 'help_core';
+    return 'help_summary';
+  }
+
+  if (content.includes('ember')) return 'boss_ember';
+  if (content.includes('warden')) return 'boss_warden';
+  if (content.includes('oracle')) return 'boss_oracle';
+  if (content.includes('boss') || content.includes('raid')) return 'boss_codex';
+
+  if (content.includes('clan')) return getClanVisualKey(content);
+  if (content.includes('pvp') || content.includes('duel') || content.includes('battle')) return getPvpVisualKey(content);
+
+  if (
+    content.includes('deposit') ||
+    content.includes('daily') ||
+    content.includes('vault') ||
+    content.includes('shop') ||
+    content.includes('purchase') ||
+    content.includes('boost') ||
+    content.includes('aura')
+  ) {
+    return getEconomyVisualKey(content);
+  }
+
+  if (
+    content.includes('spin') ||
+    content.includes('coinflip') ||
+    content.includes('balance') ||
+    content.includes('rank') ||
+    content.includes('level') ||
+    content.includes('leaderboard') ||
+    content.includes('inventory') ||
+    content.includes('stats') ||
+    content.includes('profile')
+  ) {
+    return getCoreVisualKey(content);
+  }
+
+  return null;
 }
 
 function createEmbed(message, title, color = EMBED_COLORS.primary, options = {}) {
@@ -1897,7 +1955,7 @@ client.on('messageCreate', async (message) => {
         field('Clan XP', `+${clanXpResult.gained || 0}`),
         field('Progress', `${levelProgress(user)}${user.clan ? `\n${clanLevelProgress(user)}` : ''}`, false)
       );
-    return message.reply(visualReplyOptions(embed, getCoreVisualKey(embed.data.title)));
+    return message.reply(visualReplyOptions(embed, getEconomyVisualKey(embed.data.title)));
   }
 
   if (message.content.startsWith('!coinflip')) {
