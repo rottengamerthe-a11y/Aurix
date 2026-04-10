@@ -806,6 +806,10 @@ function visualReplyOptions(embed, key, extras = {}) {
   return payload;
 }
 
+function plainReplyOptions(embed, extras = {}) {
+  return { embeds: [embed], ...extras, __skipVisualDecorate: true };
+}
+
 function normalizeReplyPayload(payload) {
   if (!payload) return payload;
   if (typeof payload === 'string') {
@@ -822,6 +826,60 @@ function normalizeReplyPayload(payload) {
   return { ...payload };
 }
 
+function shouldSkipAutoDecorateEmbed(embed) {
+  const title = String(embed?.data?.title || '');
+
+  if (!title) return false;
+  if (title.includes('Usage')) return true;
+
+  const exactTitles = new Set([
+    'Cooldown Active',
+    'Command Error',
+    'Deposit Usage',
+    'Invalid Amount',
+    'Not Enough Aura',
+    'Invalid Bet',
+    'Invalid Choice',
+    'Unknown Item',
+    'Item Cap Reached',
+    'Item Not Usable',
+    'Missing Item',
+    'No Aura',
+    'No Crate',
+    'Missing Permission',
+    'Invalid Channel',
+    'Wrong Channel',
+    'Unknown Help Section',
+    'Help Missing',
+    'Unknown Boss',
+    'No Boss Fight',
+    'No Heals Left',
+    'HP Full',
+    'No Active Raid',
+    'Already Joined',
+    'Raid Full',
+    'Raid KO',
+    'No Clan',
+    'Owner Only',
+    'Clan Name Missing',
+    'Invalid Clan Name',
+    'Clan Name Taken',
+    'Clan Full',
+    'Invite Missing',
+    'Invite Locked',
+    'Challenge Expired',
+    'Challenge Closed',
+    'Challenge Locked',
+    'Battle Busy',
+    'No Battle',
+    'Wait Your Turn',
+    'No Critical Left',
+    'Server Only'
+  ]);
+
+  return exactTitles.has(title);
+}
+
 function decorateReplyPayload(payload) {
   const normalized = normalizeReplyPayload(payload);
   if (!normalized || typeof normalized === 'string' || Array.isArray(normalized)) return normalized;
@@ -836,6 +894,7 @@ function decorateReplyPayload(payload) {
 
   for (const embed of normalized.embeds) {
     if (!embed) continue;
+    if (shouldSkipAutoDecorateEmbed(embed)) continue;
 
     const imageUrl = embed.data?.image?.url || '';
     const thumbnailUrl = embed.data?.thumbnail?.url || '';
@@ -1000,6 +1059,22 @@ function createEmbed(message, title, color = EMBED_COLORS.primary, options = {})
   return applyEmbedVisuals(embed, { title, theme: options.theme, animated: options.animated !== false });
 }
 
+function createPlainMessageEmbed(message, title, color = EMBED_COLORS.primary) {
+  return new EmbedBuilder()
+    .setColor(color)
+    .setTitle(title)
+    .setFooter({ text: `${message.author.username} • Aura Realms` })
+    .setTimestamp();
+}
+
+function createPlainInteractionEmbed(title, color = EMBED_COLORS.primary) {
+  return new EmbedBuilder()
+    .setColor(color)
+    .setTitle(title)
+    .setFooter({ text: 'Aura Realms • Interaction' })
+    .setTimestamp();
+}
+
 function field(name, value, inline = true) {
   return { name, value: String(value), inline };
 }
@@ -1019,11 +1094,11 @@ function combatEmbed(title, color, description, fields = [], options = {}) {
 }
 
 function warningEmbed(message, title, description) {
-  return createEmbed(message, title, EMBED_COLORS.danger, { theme: 'alert' }).setDescription(description);
+  return createPlainMessageEmbed(message, title, EMBED_COLORS.danger).setDescription(description);
 }
 
 function infoEmbed(message, title, description) {
-  return createEmbed(message, title, EMBED_COLORS.info).setDescription(description);
+  return createPlainMessageEmbed(message, title, EMBED_COLORS.info).setDescription(description);
 }
 
 function interactionNoticeEmbed(title, description, color = EMBED_COLORS.info) {
@@ -1039,7 +1114,7 @@ function interactionNoticeEmbed(title, description, color = EMBED_COLORS.info) {
     .setFooter({ text: 'Aura Realms • Interaction' })
     .setTimestamp();
 
-  return applyEmbedVisuals(embed, { title, description, theme });
+  return embed;
 }
 
 function cooldown(user, key, time) {
@@ -1506,16 +1581,36 @@ function buildHelpSummaryEmbed(message) {
     .addFields(categories.map(category => field(category.name, `${category.summary}\nUse \`!help ${category.key}\``, false)));
 }
 
+function splitHelpCommandsIntoFields(commands) {
+  const lines = commands.map(command => `\`${command.name}\`\n${command.description}`);
+  if (lines.length === 0) {
+    return [field('Commands', 'No commands available.', false)];
+  }
+
+  const fields = [];
+  let chunk = '';
+
+  for (const line of lines) {
+    const nextChunk = chunk ? `${chunk}\n\n${line}` : line;
+    if (nextChunk.length > 1024) {
+      fields.push(field(fields.length === 0 ? 'Commands' : 'More Commands', chunk, false));
+      chunk = line;
+    } else {
+      chunk = nextChunk;
+    }
+  }
+
+  if (chunk) {
+    fields.push(field(fields.length === 0 ? 'Commands' : 'More Commands', chunk, false));
+  }
+
+  return fields;
+}
+
 function buildHelpSectionEmbed(message, section) {
   return createEmbed(message, `${section.name} Help`, EMBED_COLORS.info)
     .setDescription(section.summary)
-    .addFields(
-      field(
-        'Commands',
-        section.commands.map(command => `\`${command.name}\`\n${command.description}`).join('\n\n') || 'No commands available.',
-        false
-      )
-    );
+    .addFields(splitHelpCommandsIntoFields(section.commands));
 }
 
 function buildShopRow() {
@@ -2039,9 +2134,8 @@ client.on('messageCreate', async (message) => {
   if (message.content === '!spin') {
     const cd = cooldown(user, 'spin', 300000);
     if (cd) {
-      return message.reply(visualReplyOptions(
+      return message.reply(plainReplyOptions(
         warningEmbed(message, 'Cooldown Active', `Wait ${cd}s before using \`!spin\` again.`),
-        'core_arcade'
       ));
     }
 
@@ -2068,9 +2162,8 @@ client.on('messageCreate', async (message) => {
   if (message.content.startsWith('!coinflip')) {
     const cd = cooldown(user, 'cf', 120000);
     if (cd) {
-      return message.reply(visualReplyOptions(
+      return message.reply(plainReplyOptions(
         warningEmbed(message, 'Cooldown Active', `Wait ${cd}s before using \`!coinflip\` again.`),
-        'core_arcade'
       ));
     }
 
@@ -2188,7 +2281,7 @@ client.on('messageCreate', async (message) => {
   }
 
   if (message.content === '!skills') {
-    const embed = createEmbed(message, 'Skill Tree', EMBED_COLORS.royal)
+    const embed = createPlainMessageEmbed(message, 'Skill Tree', EMBED_COLORS.royal)
       .setDescription('Use `!skill upgrade <branch>` to spend points and `!skill paths` to view specializations.')
       .addFields(
         field('Available Points', availableSkillPoints(user)),
@@ -2197,7 +2290,7 @@ client.on('messageCreate', async (message) => {
         field('Luck', `${user.skills.luck} (${getSpecialization(user, 'luck') || 'no path'})`),
         field('Upgrade Costs', `dmg ${nextSkillCost(user, 'dmg')} • defense ${nextSkillCost(user, 'defense')} • luck ${nextSkillCost(user, 'luck')}`, false)
       );
-    return message.reply(visualReplyOptions(embed, 'help_skills', { components: [buildSkillUpgradeRow()] }));
+    return message.reply(plainReplyOptions(embed, { components: [buildSkillUpgradeRow()] }));
   }
 
   if (message.content.startsWith('!skill')) {
@@ -2206,9 +2299,8 @@ client.on('messageCreate', async (message) => {
     const skillName = (args[2] || '').toLowerCase();
 
     if (action === 'paths') {
-      return message.reply(visualReplyOptions(
+      return message.reply(plainReplyOptions(
         infoEmbed(message, 'Skill Paths', `Skill specializations unlock at branch level 5.\n${specializationSummary()}`),
-        'help_skills',
         {
         components: [buildSkillPathRow('dmg'), buildSkillPathRow('defense'), buildSkillPathRow('luck')]
         }
@@ -2233,9 +2325,8 @@ client.on('messageCreate', async (message) => {
       user.specializations[skillName] = pathName;
       user.markModified('specializations');
       await user.save();
-      return message.reply(visualReplyOptions(
-        createEmbed(message, 'Specialization Chosen', EMBED_COLORS.success).setDescription(`Specialized **${skillName}** into **${pathName}**.\n${SKILL_SPECIALIZATIONS[skillName][pathName]}`),
-        'help_skills',
+      return message.reply(plainReplyOptions(
+        createPlainMessageEmbed(message, 'Specialization Chosen', EMBED_COLORS.success).setDescription(`Specialized **${skillName}** into **${pathName}**.\n${SKILL_SPECIALIZATIONS[skillName][pathName]}`),
         {
         components: [buildSkillUpgradeRow()]
         }
@@ -2255,9 +2346,8 @@ client.on('messageCreate', async (message) => {
     user.skills[skillName] += 1;
     user.markModified('skills');
     await user.save();
-    return message.reply(visualReplyOptions(
-      createEmbed(message, 'Skill Upgraded', EMBED_COLORS.success).setDescription(`Upgraded **${skillName}** to **${user.skills[skillName]}**.`).addFields(field('Tree Summary', skillTreeSummary(user), false)),
-      'help_skills',
+    return message.reply(plainReplyOptions(
+      createPlainMessageEmbed(message, 'Skill Upgraded', EMBED_COLORS.success).setDescription(`Upgraded **${skillName}** to **${user.skills[skillName]}**.`).addFields(field('Tree Summary', skillTreeSummary(user), false)),
       {
       components: [buildSkillUpgradeRow()]
       }
@@ -2267,24 +2357,21 @@ client.on('messageCreate', async (message) => {
   if (message.content.startsWith('!deposit')) {
     const amountArg = message.content.split(' ')[1];
     if (!amountArg) {
-      return message.reply(visualReplyOptions(
+      return message.reply(plainReplyOptions(
         infoEmbed(message, 'Deposit Usage', 'Enter an amount to deposit.\nExample: `!deposit 5000` or `!deposit all`'),
-        'core_arcade'
       ));
     }
 
     const amount = amountArg.toLowerCase() === 'all' ? user.aura : parseInt(amountArg, 10);
     if (!Number.isInteger(amount) || amount <= 0) {
-      return message.reply(visualReplyOptions(
+      return message.reply(plainReplyOptions(
         warningEmbed(message, 'Invalid Amount', 'Enter a valid deposit amount.'),
-        'core_arcade'
       ));
     }
 
     if (amount > user.aura) {
-      return message.reply(visualReplyOptions(
+      return message.reply(plainReplyOptions(
         warningEmbed(message, 'Not Enough Aura', "You don't have that much Aura in your wallet."),
-        'core_arcade'
       ));
     }
 
@@ -2293,22 +2380,21 @@ client.on('messageCreate', async (message) => {
     user.lastVaultInterest = Date.now();
     updateRank(user);
     await user.save();
-    const embed = createEmbed(message, 'Vault Deposit', EMBED_COLORS.success)
+    const embed = createPlainMessageEmbed(message, 'Vault Deposit', EMBED_COLORS.success)
       .setDescription(`Deposited ${amount} Aura into your vault.`)
       .addFields(
         field('Wallet', user.aura),
         field('Vault', user.vault),
         field('Base Interest', `${Math.round(VAULT_INTEREST_RATE * 100)}% every 24h`)
       );
-    return message.reply(visualReplyOptions(embed, 'core_arcade', { components: buildEconomyRows(user) }));
+    return message.reply(plainReplyOptions(embed, { components: buildEconomyRows(user) }));
   }
 
   if (message.content === '!daily') {
     const cd = cooldown(user, 'daily', 86400000);
     if (cd) {
-      return message.reply(visualReplyOptions(
+      return message.reply(plainReplyOptions(
         warningEmbed(message, 'Cooldown Active', `Wait ${cd}s before claiming \`!daily\` again.`),
-        'core_arcade'
       ));
     }
 
@@ -2334,18 +2420,18 @@ client.on('messageCreate', async (message) => {
     const nextIn = Math.max(VAULT_INTEREST_INTERVAL - (Date.now() - user.lastVaultInterest), 0);
     const appliedText = vaultInterest.applied > 0 ? `Applied now: +${vaultInterest.applied} Aura | ` : '';
     const effectiveRate = ((vaultInterest.rate || (VAULT_INTEREST_RATE + getRankPerks(user).vaultBonus + getClanPerks(user).vaultBonus)) * 100).toFixed(2);
-    const embed = createEmbed(message, 'Vault Interest', EMBED_COLORS.success)
+    const embed = createPlainMessageEmbed(message, 'Vault Interest', EMBED_COLORS.success)
       .setDescription(appliedText ? `Interest applied: +${vaultInterest.applied} Aura` : 'Your vault grows passively over time.')
       .addFields(
         field('Vault', user.vault),
         field('Rate', `${effectiveRate}% every 24h`),
         field('Next Payout', formatDuration(nextIn))
       );
-    return message.reply(visualReplyOptions(embed, getEconomyVisualKey(embed.data.title), { components: buildEconomyRows(user) }));
+    return message.reply(plainReplyOptions(embed, { components: buildEconomyRows(user) }));
   }
 
   if (message.content === '!shop') {
-    const embed = createEmbed(message, 'Aura Shop', EMBED_COLORS.primary)
+    const embed = createPlainMessageEmbed(message, 'Aura Shop', EMBED_COLORS.primary)
       .setDescription('Boost items are capped and cannot stack while active.')
       .addFields(
         Object.entries(SHOP_ITEMS).map(([key, item]) =>
@@ -2353,7 +2439,7 @@ client.on('messageCreate', async (message) => {
         )
       );
 
-    return message.reply(visualReplyOptions(embed, getEconomyVisualKey(embed.data.title), { components: [buildShopRow()] }));
+    return message.reply(plainReplyOptions(embed, { components: [buildShopRow()] }));
   }
 
   if (message.content.startsWith('!buy')) {
@@ -2420,14 +2506,14 @@ client.on('messageCreate', async (message) => {
     xpResult.level = user.level;
 
     await user.save();
-    const embed = createEmbed(message, 'Crate Opened', EMBED_COLORS.primary)
+    const embed = createPlainMessageEmbed(message, 'Crate Opened', EMBED_COLORS.primary)
       .setDescription('📦 Your crate burst open with a shower of loot.')
       .addFields(
         field('Aura', `+${auraResult.reward}${auraResult.multiplier > 1 ? ` (${auraResult.multiplier}x boost)` : ''}`),
         field('XP', `+${xpResult.reward}`),
         field('Clan XP', `+${clanXpResult.gained || 0}`)
       );
-    return message.reply(visualReplyOptions(embed, 'core_arcade'));
+    return message.reply(plainReplyOptions(embed));
   }
 
   if (message.content.startsWith('!boss')) {
@@ -2775,7 +2861,7 @@ client.on('messageCreate', async (message) => {
       user.clanXp = 0;
       updateRank(user);
       await user.save();
-      const embed = createEmbed(message, `Clan Created: ${clanName}`, EMBED_COLORS.success)
+      const embed = createPlainMessageEmbed(message, `Clan Created: ${clanName}`, EMBED_COLORS.success)
         .setDescription(`Your clan is live and ${CLAN_CREATE_COST} Aura has been spent.`)
         .addFields(
           field('Owner', `<@${user.userId}>`),
@@ -2784,7 +2870,7 @@ client.on('messageCreate', async (message) => {
           field('Member Cap', getClanLevelData(user.clanLevel).perks.memberCap),
           field('Wallet Left', user.aura)
         );
-      return message.reply(visualReplyOptions(embed, getClanVisualKey(embed.data.title)));
+      return message.reply(plainReplyOptions(embed));
     }
 
     if (subcommand === 'invite') {
@@ -3242,9 +3328,9 @@ client.on('messageCreate', async (message) => {
   if (message.content === '!leaderboard') {
     const top = await User.find().sort({ aura: -1 }).limit(5);
     const text = top.map((u, i) => `${i + 1}. <@${u.userId}>: ${u.aura}`).join('\n');
-    const embed = createEmbed(message, 'Top Players', EMBED_COLORS.primary)
+    const embed = createPlainMessageEmbed(message, 'Top Players', EMBED_COLORS.primary)
       .setDescription(text || 'No players yet.');
-    return message.reply(visualReplyOptions(embed, 'core_profile'));
+    return message.reply(plainReplyOptions(embed));
   }
 
   if (message.content === '!inv') {
@@ -3385,9 +3471,8 @@ client.on('interactionCreate', async (interaction) => {
     activateBoost(user, shopItem.boostKey, shopItem.multiplier, shopItem.durationMs);
     await user.save();
 
-    return interaction.reply(visualReplyOptions(
+    return interaction.reply(plainReplyOptions(
       interactionNoticeEmbed('Boost Activated', `${shopItem.emoji} ${shopItem.name} is now active for ${formatDuration(shopItem.durationMs)}.`, EMBED_COLORS.success),
-      getEconomyVisualKey('Boost Activated'),
       { ephemeral: true }
     ));
   }
@@ -3404,21 +3489,16 @@ client.on('interactionCreate', async (interaction) => {
     xpResult.level = user.level;
     await user.save();
 
-    return interaction.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(EMBED_COLORS.primary)
-          .setTitle('Crate Opened')
-          .setDescription('📦 Your crate burst open with a shower of loot.')
-          .addFields(
-            field('Aura', `+${auraResult.reward}${auraResult.multiplier > 1 ? ` (${auraResult.multiplier}x boost)` : ''}`),
-            field('XP', `+${xpResult.reward}`),
-            field('Clan XP', `+${clanXpResult.gained || 0}`)
-          )
-          .setTimestamp()
-      ],
-      ephemeral: true
-    });
+    return interaction.reply(plainReplyOptions(
+      createPlainInteractionEmbed('Crate Opened', EMBED_COLORS.primary)
+        .setDescription('📦 Your crate burst open with a shower of loot.')
+        .addFields(
+          field('Aura', `+${auraResult.reward}${auraResult.multiplier > 1 ? ` (${auraResult.multiplier}x boost)` : ''}`),
+          field('XP', `+${xpResult.reward}`),
+          field('Clan XP', `+${clanXpResult.gained || 0}`)
+        ),
+      { ephemeral: true }
+    ));
   }
 
   if (interaction.customId === 'econ_bal') {
@@ -3434,14 +3514,13 @@ client.on('interactionCreate', async (interaction) => {
       )
       .setTimestamp();
 
-    return interaction.reply(visualReplyOptions(embed, getEconomyVisualKey(embed.data.title), { components: buildEconomyRows(user), ephemeral: true }));
+    return interaction.reply(plainReplyOptions(embed, { components: buildEconomyRows(user), ephemeral: true }));
   }
 
   if (interaction.customId === 'econ_deposit_all') {
     if (user.aura <= 0) {
-      return interaction.reply(visualReplyOptions(
+      return interaction.reply(plainReplyOptions(
         interactionNoticeEmbed('No Aura', 'You have no Aura in your wallet to deposit.', EMBED_COLORS.danger),
-        'core_arcade',
         { ephemeral: true }
       ));
     }
@@ -3453,9 +3532,8 @@ client.on('interactionCreate', async (interaction) => {
     updateRank(user);
     await user.save();
 
-    return interaction.reply(visualReplyOptions(
+    return interaction.reply(plainReplyOptions(
       interactionNoticeEmbed('Vault Deposit', `Deposited ${amount} Aura into your vault.`, EMBED_COLORS.success),
-      'core_arcade',
       {
       components: buildEconomyRows(user),
       ephemeral: true
@@ -3466,9 +3544,8 @@ client.on('interactionCreate', async (interaction) => {
   if (interaction.customId === 'econ_daily') {
     const cd = cooldown(user, 'daily', 86400000);
     if (cd) {
-      return interaction.reply(visualReplyOptions(
+      return interaction.reply(plainReplyOptions(
         interactionNoticeEmbed('Cooldown Active', `Wait ${cd}s before claiming daily again.`, EMBED_COLORS.danger),
-        'core_arcade',
         { ephemeral: true }
       ));
     }
@@ -3599,9 +3676,9 @@ client.on('interactionCreate', async (interaction) => {
   }
 
   if (interaction.customId === 'skill_paths') {
-    return interaction.reply(visualReplyOptions(
-      buildHelpSectionEmbed({ author: interaction.user }, { name: 'Skill Paths', summary: 'Choose a specialization once a branch reaches level 5.', commands: [] }).setDescription(`Skill specializations unlock at branch level 5.\n${specializationSummary()}`),
-      'help_skills',
+    return interaction.reply(plainReplyOptions(
+      createPlainInteractionEmbed('Skill Paths', EMBED_COLORS.info)
+        .setDescription(`Skill specializations unlock at branch level 5.\n${specializationSummary()}`),
       {
       components: [buildSkillPathRow('dmg'), buildSkillPathRow('defense'), buildSkillPathRow('luck')],
       ephemeral: true
@@ -3625,9 +3702,8 @@ client.on('interactionCreate', async (interaction) => {
     user.markModified('skills');
     await user.save();
 
-    return interaction.reply(visualReplyOptions(
+    return interaction.reply(plainReplyOptions(
       interactionNoticeEmbed('Skill Upgraded', `Upgraded **${skillName}** to **${user.skills[skillName]}**.`, EMBED_COLORS.success),
-      'help_skills',
       {
       components: [buildSkillUpgradeRow()],
       ephemeral: true
@@ -3653,9 +3729,8 @@ client.on('interactionCreate', async (interaction) => {
     user.markModified('specializations');
     await user.save();
 
-    return interaction.reply(visualReplyOptions(
+    return interaction.reply(plainReplyOptions(
       interactionNoticeEmbed('Specialization Chosen', `Specialized **${skillName}** into **${pathName}**.\n${SKILL_SPECIALIZATIONS[skillName][pathName]}`, EMBED_COLORS.success),
-      'help_skills',
       {
       components: [buildSkillUpgradeRow()],
       ephemeral: true
@@ -4677,9 +4752,8 @@ client.on('interactionCreate', async (interaction) => {
 
     const cd = cooldown(user, 'cf', 120000);
     if (cd) {
-      return interaction.reply(visualReplyOptions(
+      return interaction.reply(plainReplyOptions(
         interactionNoticeEmbed('Cooldown Active', `Wait ${cd}s before using coinflip again.`, EMBED_COLORS.danger),
-        getCoreVisualKey('Coinflip'),
         { ephemeral: true }
       ));
     }
@@ -4729,16 +4803,14 @@ client.on('interactionCreate', async (interaction) => {
     const amount = amountArg === 'all' ? user.aura : parseInt(amountArg, 10);
 
     if (!Number.isInteger(amount) || amount <= 0) {
-      return interaction.reply(visualReplyOptions(
+      return interaction.reply(plainReplyOptions(
         interactionNoticeEmbed('Invalid Amount', 'Enter a valid deposit amount.', EMBED_COLORS.danger),
-        'core_arcade',
         { ephemeral: true }
       ));
     }
     if (amount > user.aura) {
-      return interaction.reply(visualReplyOptions(
+      return interaction.reply(plainReplyOptions(
         interactionNoticeEmbed('Not Enough Aura', "You don't have that much Aura in your wallet.", EMBED_COLORS.danger),
-        'core_arcade',
         { ephemeral: true }
       ));
     }
@@ -4749,9 +4821,8 @@ client.on('interactionCreate', async (interaction) => {
     updateRank(user);
     await user.save();
 
-    return interaction.reply(visualReplyOptions(
+    return interaction.reply(plainReplyOptions(
       interactionNoticeEmbed('Vault Deposit', `Deposited ${amount} Aura into your vault.`, EMBED_COLORS.success),
-      'core_arcade',
       {
       components: buildEconomyRows(user),
       ephemeral: true
@@ -4779,24 +4850,21 @@ client.on('interactionCreate', async (interaction) => {
     updateRank(user);
     await user.save();
 
-    return interaction.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(EMBED_COLORS.success)
-          .setTitle(`Clan Created: ${clanName}`)
-          .setDescription(`Your clan is live and ${CLAN_CREATE_COST} Aura has been spent.`)
-          .addFields(
-            field('Owner', `<@${user.userId}>`),
-            field('Clan Level', user.clanLevel),
-            field('Privacy', user.clanPrivacy),
-            field('Member Cap', getClanLevelData(user.clanLevel).perks.memberCap),
-            field('Wallet Left', user.aura)
-          )
-          .setTimestamp()
-      ],
+    return interaction.reply(plainReplyOptions(
+      createPlainInteractionEmbed(`Clan Created: ${clanName}`, EMBED_COLORS.success)
+        .setDescription(`Your clan is live and ${CLAN_CREATE_COST} Aura has been spent.`)
+        .addFields(
+          field('Owner', `<@${user.userId}>`),
+          field('Clan Level', user.clanLevel),
+          field('Privacy', user.clanPrivacy),
+          field('Member Cap', getClanLevelData(user.clanLevel).perks.memberCap),
+          field('Wallet Left', user.aura)
+        ),
+      {
       components: [buildClanRenameRow()],
       ephemeral: true
-    });
+      }
+    ));
   }
 
   if (interaction.customId === 'modal_clan_rename') {
