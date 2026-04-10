@@ -4981,7 +4981,7 @@ client.on('guildCreate', async (guild) => {
   }
 });
 
-client.once('clientReady', () => {
+client.once('ready', () => {
   discordReady = true;
   clearTimeout(discordLoginWatchdog);
   console.log(`Logged in as ${client.user.tag}`);
