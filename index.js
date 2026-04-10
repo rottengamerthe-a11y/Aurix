@@ -806,6 +806,28 @@ function visualReplyOptions(embed, key, extras = {}) {
   return payload;
 }
 
+function fixedVisualReplyOptions(embed, visualName, extras = {}) {
+  const baseUrl = PUBLIC_BASE_URL || '';
+  const visuals = {
+    core_profile: {
+      banner: `${baseUrl}/generated/core-profile-banner.png`,
+      thumb: `${baseUrl}/generated/core-profile-thumb.png`
+    },
+    core_arcade: {
+      banner: `${baseUrl}/generated/core-arcade-banner.png`,
+      thumb: `${baseUrl}/generated/core-arcade-thumb.png`
+    }
+  };
+
+  const selected = visuals[visualName];
+  if (selected?.banner && selected?.thumb) {
+    embed.setImage(selected.banner);
+    embed.setThumbnail(selected.thumb);
+  }
+
+  return { embeds: [embed], ...extras, __skipVisualDecorate: true };
+}
+
 function normalizeReplyPayload(payload) {
   if (!payload) return payload;
   if (typeof payload === 'string') {
@@ -2046,9 +2068,9 @@ client.on('messageCreate', async (message) => {
   if (message.content === '!spin') {
     const cd = cooldown(user, 'spin', 300000);
     if (cd) {
-      return message.reply(visualReplyOptions(
+      return message.reply(fixedVisualReplyOptions(
         createPlainMessageEmbed(message, 'Cooldown Active', EMBED_COLORS.danger, `Wait ${cd}s before using \`!spin\` again.`),
-        getCoreVisualKey('Slot Spin')
+        'core_arcade'
       ));
     }
 
@@ -2075,9 +2097,9 @@ client.on('messageCreate', async (message) => {
   if (message.content.startsWith('!coinflip')) {
     const cd = cooldown(user, 'cf', 120000);
     if (cd) {
-      return message.reply(visualReplyOptions(
+      return message.reply(fixedVisualReplyOptions(
         createPlainMessageEmbed(message, 'Cooldown Active', EMBED_COLORS.danger, `Wait ${cd}s before using \`!coinflip\` again.`),
-        getCoreVisualKey('Coinflip')
+        'core_arcade'
       ));
     }
 
@@ -2274,7 +2296,7 @@ client.on('messageCreate', async (message) => {
   if (message.content.startsWith('!deposit')) {
     const amountArg = message.content.split(' ')[1];
     if (!amountArg) {
-      return message.reply(visualReplyOptions(
+      return message.reply(fixedVisualReplyOptions(
         createPlainMessageEmbed(message, 'Deposit Usage', EMBED_COLORS.info, 'Enter an amount to deposit.\nExample: `!deposit 5000` or `!deposit all`'),
         'core_profile'
       ));
@@ -2282,14 +2304,14 @@ client.on('messageCreate', async (message) => {
 
     const amount = amountArg.toLowerCase() === 'all' ? user.aura : parseInt(amountArg, 10);
     if (!Number.isInteger(amount) || amount <= 0) {
-      return message.reply(visualReplyOptions(
+      return message.reply(fixedVisualReplyOptions(
         createPlainMessageEmbed(message, 'Invalid Amount', EMBED_COLORS.danger, 'Enter a valid deposit amount.'),
         'core_profile'
       ));
     }
 
     if (amount > user.aura) {
-      return message.reply(visualReplyOptions(
+      return message.reply(fixedVisualReplyOptions(
         createPlainMessageEmbed(message, 'Not Enough Aura', EMBED_COLORS.danger, "You don't have that much Aura in your wallet."),
         'core_profile'
       ));
@@ -2306,13 +2328,13 @@ client.on('messageCreate', async (message) => {
         field('Vault', user.vault),
         field('Base Interest', `${Math.round(VAULT_INTEREST_RATE * 100)}% every 24h`)
       );
-    return message.reply(visualReplyOptions(embed, 'core_profile', { components: buildEconomyRows(user) }));
+    return message.reply(fixedVisualReplyOptions(embed, 'core_profile', { components: buildEconomyRows(user) }));
   }
 
   if (message.content === '!daily') {
     const cd = cooldown(user, 'daily', 86400000);
     if (cd) {
-      return message.reply(visualReplyOptions(
+      return message.reply(fixedVisualReplyOptions(
         createPlainMessageEmbed(message, 'Cooldown Active', EMBED_COLORS.danger, `Wait ${cd}s before claiming \`!daily\` again.`),
         'core_profile'
       ));
@@ -3445,7 +3467,7 @@ client.on('interactionCreate', async (interaction) => {
 
   if (interaction.customId === 'econ_deposit_all') {
     if (user.aura <= 0) {
-      return interaction.reply(visualReplyOptions(
+      return interaction.reply(fixedVisualReplyOptions(
         createPlainInteractionEmbed('No Aura', EMBED_COLORS.danger, 'You have no Aura in your wallet to deposit.'),
         'core_profile',
         { ephemeral: true }
@@ -3459,7 +3481,7 @@ client.on('interactionCreate', async (interaction) => {
     updateRank(user);
     await user.save();
 
-    return interaction.reply(visualReplyOptions(
+    return interaction.reply(fixedVisualReplyOptions(
       createPlainInteractionEmbed('Vault Deposit', EMBED_COLORS.success, `Deposited ${amount} Aura into your vault.`),
       'core_profile',
       {
@@ -3472,7 +3494,7 @@ client.on('interactionCreate', async (interaction) => {
   if (interaction.customId === 'econ_daily') {
     const cd = cooldown(user, 'daily', 86400000);
     if (cd) {
-      return interaction.reply(visualReplyOptions(
+      return interaction.reply(fixedVisualReplyOptions(
         createPlainInteractionEmbed('Cooldown Active', EMBED_COLORS.danger, `Wait ${cd}s before claiming daily again.`),
         'core_profile',
         { ephemeral: true }
@@ -4683,9 +4705,9 @@ client.on('interactionCreate', async (interaction) => {
 
     const cd = cooldown(user, 'cf', 120000);
     if (cd) {
-      return interaction.reply(visualReplyOptions(
+      return interaction.reply(fixedVisualReplyOptions(
         createPlainInteractionEmbed('Cooldown Active', EMBED_COLORS.danger, `Wait ${cd}s before using coinflip again.`),
-        getCoreVisualKey('Coinflip'),
+        'core_arcade',
         { ephemeral: true }
       ));
     }
@@ -4735,14 +4757,14 @@ client.on('interactionCreate', async (interaction) => {
     const amount = amountArg === 'all' ? user.aura : parseInt(amountArg, 10);
 
     if (!Number.isInteger(amount) || amount <= 0) {
-      return interaction.reply(visualReplyOptions(
+      return interaction.reply(fixedVisualReplyOptions(
         createPlainInteractionEmbed('Invalid Amount', EMBED_COLORS.danger, 'Enter a valid deposit amount.'),
         'core_profile',
         { ephemeral: true }
       ));
     }
     if (amount > user.aura) {
-      return interaction.reply(visualReplyOptions(
+      return interaction.reply(fixedVisualReplyOptions(
         createPlainInteractionEmbed('Not Enough Aura', EMBED_COLORS.danger, "You don't have that much Aura in your wallet."),
         'core_profile',
         { ephemeral: true }
@@ -4755,7 +4777,7 @@ client.on('interactionCreate', async (interaction) => {
     updateRank(user);
     await user.save();
 
-    return interaction.reply(visualReplyOptions(
+    return interaction.reply(fixedVisualReplyOptions(
       createPlainInteractionEmbed('Vault Deposit', EMBED_COLORS.success, `Deposited ${amount} Aura into your vault.`),
       'core_profile',
       {
