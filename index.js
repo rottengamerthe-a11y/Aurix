@@ -1949,7 +1949,7 @@ client.on('messageCreate', async (message) => {
         field('Luck', `${user.skills.luck} (${getSpecialization(user, 'luck') || 'no path'})`),
         field('Upgrade Costs', `dmg ${nextSkillCost(user, 'dmg')} • defense ${nextSkillCost(user, 'defense')} • luck ${nextSkillCost(user, 'luck')}`, false)
       );
-    return message.reply({ embeds: [embed], components: [buildSkillUpgradeRow()] });
+    return message.reply(visualReplyOptions(embed, 'help_skills', { components: [buildSkillUpgradeRow()] }));
   }
 
   if (message.content.startsWith('!skill')) {
@@ -1958,10 +1958,13 @@ client.on('messageCreate', async (message) => {
     const skillName = (args[2] || '').toLowerCase();
 
     if (action === 'paths') {
-      return message.reply({
-        embeds: [infoEmbed(message, 'Skill Paths', `Skill specializations unlock at branch level 5.\n${specializationSummary()}`)],
+      return message.reply(visualReplyOptions(
+        infoEmbed(message, 'Skill Paths', `Skill specializations unlock at branch level 5.\n${specializationSummary()}`),
+        'help_skills',
+        {
         components: [buildSkillPathRow('dmg'), buildSkillPathRow('defense'), buildSkillPathRow('luck')]
-      });
+        }
+      ));
     }
 
     if (action === 'specialize') {
@@ -1982,10 +1985,13 @@ client.on('messageCreate', async (message) => {
       user.specializations[skillName] = pathName;
       user.markModified('specializations');
       await user.save();
-      return message.reply({
-        embeds: [createEmbed(message, 'Specialization Chosen', EMBED_COLORS.success).setDescription(`Specialized **${skillName}** into **${pathName}**.\n${SKILL_SPECIALIZATIONS[skillName][pathName]}`)],
+      return message.reply(visualReplyOptions(
+        createEmbed(message, 'Specialization Chosen', EMBED_COLORS.success).setDescription(`Specialized **${skillName}** into **${pathName}**.\n${SKILL_SPECIALIZATIONS[skillName][pathName]}`),
+        'help_skills',
+        {
         components: [buildSkillUpgradeRow()]
-      });
+        }
+      ));
     }
 
     if (action !== 'upgrade' || !['dmg', 'defense', 'luck'].includes(skillName)) {
@@ -2001,10 +2007,13 @@ client.on('messageCreate', async (message) => {
     user.skills[skillName] += 1;
     user.markModified('skills');
     await user.save();
-    return message.reply({
-      embeds: [createEmbed(message, 'Skill Upgraded', EMBED_COLORS.success).setDescription(`Upgraded **${skillName}** to **${user.skills[skillName]}**.`).addFields(field('Tree Summary', skillTreeSummary(user), false))],
+    return message.reply(visualReplyOptions(
+      createEmbed(message, 'Skill Upgraded', EMBED_COLORS.success).setDescription(`Upgraded **${skillName}** to **${user.skills[skillName]}**.`).addFields(field('Tree Summary', skillTreeSummary(user), false)),
+      'help_skills',
+      {
       components: [buildSkillUpgradeRow()]
-    });
+      }
+    ));
   }
 
   if (message.content.startsWith('!deposit')) {
@@ -2032,7 +2041,7 @@ client.on('messageCreate', async (message) => {
         field('Vault', user.vault),
         field('Base Interest', `${Math.round(VAULT_INTEREST_RATE * 100)}% every 24h`)
       );
-    return message.reply({ embeds: [embed], components: buildEconomyRows(user) });
+    return message.reply(visualReplyOptions(embed, 'core_profile', { components: buildEconomyRows(user) }));
   }
 
   if (message.content === '!daily') {
@@ -2054,7 +2063,7 @@ client.on('messageCreate', async (message) => {
         field('Clan XP', `+${clanXpResult.gained || 0}`),
         field('Progress', `${levelProgress(user)}${user.clan ? `\n${clanLevelProgress(user)}` : ''}`, false)
       );
-    return message.reply({ embeds: [embed], components: buildEconomyRows(user) });
+    return message.reply(visualReplyOptions(embed, 'core_profile', { components: buildEconomyRows(user) }));
   }
 
   if (message.content === '!vaultinterest') {
@@ -2068,7 +2077,7 @@ client.on('messageCreate', async (message) => {
         field('Rate', `${effectiveRate}% every 24h`),
         field('Next Payout', formatDuration(nextIn))
       );
-    return message.reply({ embeds: [embed], components: buildEconomyRows(user) });
+    return message.reply(visualReplyOptions(embed, 'core_profile', { components: buildEconomyRows(user) }));
   }
 
   if (message.content === '!shop') {
@@ -2080,7 +2089,7 @@ client.on('messageCreate', async (message) => {
         )
       );
 
-    return message.reply({ embeds: [embed], components: [buildShopRow()] });
+    return message.reply(visualReplyOptions(embed, 'core_profile', { components: [buildShopRow()] }));
   }
 
   if (message.content.startsWith('!buy')) {
@@ -2134,7 +2143,7 @@ client.on('messageCreate', async (message) => {
         field('Effect', `${shopItem.multiplier}x ${BOOST_LABELS[shopItem.boostKey]}`),
         field('Duration', formatDuration(shopItem.durationMs))
       );
-    return message.reply({ embeds: [embed] });
+    return message.reply(visualReplyOptions(embed, 'core_profile'));
   }
 
   if (message.content === '!open') {
@@ -2154,7 +2163,7 @@ client.on('messageCreate', async (message) => {
         field('XP', `+${xpResult.reward}`),
         field('Clan XP', `+${clanXpResult.gained || 0}`)
       );
-    return message.reply({ embeds: [embed] });
+    return message.reply(visualReplyOptions(embed, 'core_arcade'));
   }
 
   if (message.content.startsWith('!boss')) {
@@ -2971,7 +2980,7 @@ client.on('messageCreate', async (message) => {
     const text = top.map((u, i) => `${i + 1}. <@${u.userId}>: ${u.aura}`).join('\n');
     const embed = createEmbed(message, 'Top Players', EMBED_COLORS.primary)
       .setDescription(text || 'No players yet.');
-    return message.reply({ embeds: [embed] });
+    return message.reply(visualReplyOptions(embed, 'core_profile'));
   }
 
   if (message.content === '!inv') {
@@ -3163,7 +3172,7 @@ client.on('interactionCreate', async (interaction) => {
       )
       .setTimestamp();
 
-    return interaction.reply({ embeds: [embed], components: buildEconomyRows(user), ephemeral: true });
+    return interaction.reply(visualReplyOptions(embed, 'core_profile', { components: buildEconomyRows(user), ephemeral: true }));
   }
 
   if (interaction.customId === 'econ_deposit_all') {
@@ -3178,11 +3187,14 @@ client.on('interactionCreate', async (interaction) => {
     updateRank(user);
     await user.save();
 
-    return interaction.reply({
-      embeds: [interactionNoticeEmbed('Vault Deposit', `Deposited ${amount} Aura into your vault.`, EMBED_COLORS.success)],
+    return interaction.reply(visualReplyOptions(
+      interactionNoticeEmbed('Vault Deposit', `Deposited ${amount} Aura into your vault.`, EMBED_COLORS.success),
+      'core_profile',
+      {
       components: buildEconomyRows(user),
       ephemeral: true
-    });
+      }
+    ));
   }
 
   if (interaction.customId === 'econ_daily') {
@@ -3198,23 +3210,24 @@ client.on('interactionCreate', async (interaction) => {
     xpResult.level = user.level;
     await user.save();
 
-    return interaction.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(EMBED_COLORS.success)
-          .setTitle('Daily Reward')
-          .setDescription(`Your streak is now **${user.streak}**.`)
-          .addFields(
-            field('Aura', `+${auraResult.reward}${auraResult.multiplier > 1 ? ` (${auraResult.multiplier}x boost)` : ''}`),
-            field('XP', `+${xpResult.reward}`),
-            field('Clan XP', `+${clanXpResult.gained || 0}`),
-            field('Progress', `${levelProgress(user)}${user.clan ? `\n${clanLevelProgress(user)}` : ''}`, false)
-          )
-          .setTimestamp()
-      ],
+    return interaction.reply(visualReplyOptions(
+      new EmbedBuilder()
+        .setColor(EMBED_COLORS.success)
+        .setTitle('Daily Reward')
+        .setDescription(`Your streak is now **${user.streak}**.`)
+        .addFields(
+          field('Aura', `+${auraResult.reward}${auraResult.multiplier > 1 ? ` (${auraResult.multiplier}x boost)` : ''}`),
+          field('XP', `+${xpResult.reward}`),
+          field('Clan XP', `+${clanXpResult.gained || 0}`),
+          field('Progress', `${levelProgress(user)}${user.clan ? `\n${clanLevelProgress(user)}` : ''}`, false)
+        )
+        .setTimestamp(),
+      'core_profile',
+      {
       components: buildEconomyRows(user),
       ephemeral: true
-    });
+      }
+    ));
   }
 
   if (interaction.customId === 'econ_vaultinterest') {
@@ -3315,11 +3328,14 @@ client.on('interactionCreate', async (interaction) => {
   }
 
   if (interaction.customId === 'skill_paths') {
-    return interaction.reply({
-      embeds: [buildHelpSectionEmbed({ author: interaction.user }, { name: 'Skill Paths', summary: 'Choose a specialization once a branch reaches level 5.', commands: [] }).setDescription(`Skill specializations unlock at branch level 5.\n${specializationSummary()}`)],
+    return interaction.reply(visualReplyOptions(
+      buildHelpSectionEmbed({ author: interaction.user }, { name: 'Skill Paths', summary: 'Choose a specialization once a branch reaches level 5.', commands: [] }).setDescription(`Skill specializations unlock at branch level 5.\n${specializationSummary()}`),
+      'help_skills',
+      {
       components: [buildSkillPathRow('dmg'), buildSkillPathRow('defense'), buildSkillPathRow('luck')],
       ephemeral: true
-    });
+      }
+    ));
   }
 
   if (interaction.customId.startsWith('skill_upgrade:')) {
@@ -3338,13 +3354,14 @@ client.on('interactionCreate', async (interaction) => {
     user.markModified('skills');
     await user.save();
 
-    return interaction.reply({
-      embeds: [
-        interactionNoticeEmbed('Skill Upgraded', `Upgraded **${skillName}** to **${user.skills[skillName]}**.`, EMBED_COLORS.success)
-      ],
+    return interaction.reply(visualReplyOptions(
+      interactionNoticeEmbed('Skill Upgraded', `Upgraded **${skillName}** to **${user.skills[skillName]}**.`, EMBED_COLORS.success),
+      'help_skills',
+      {
       components: [buildSkillUpgradeRow()],
       ephemeral: true
-    });
+      }
+    ));
   }
 
   if (interaction.customId.startsWith('skill_specialize:')) {
@@ -3365,13 +3382,14 @@ client.on('interactionCreate', async (interaction) => {
     user.markModified('specializations');
     await user.save();
 
-    return interaction.reply({
-      embeds: [
-        interactionNoticeEmbed('Specialization Chosen', `Specialized **${skillName}** into **${pathName}**.\n${SKILL_SPECIALIZATIONS[skillName][pathName]}`, EMBED_COLORS.success)
-      ],
+    return interaction.reply(visualReplyOptions(
+      interactionNoticeEmbed('Specialization Chosen', `Specialized **${skillName}** into **${pathName}**.\n${SKILL_SPECIALIZATIONS[skillName][pathName]}`, EMBED_COLORS.success),
+      'help_skills',
+      {
       components: [buildSkillUpgradeRow()],
       ephemeral: true
-    });
+      }
+    ));
   }
 
   if (interaction.customId.startsWith('boss_start:')) {
