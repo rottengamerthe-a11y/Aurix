@@ -686,9 +686,10 @@ function runVisualSelfTest() {
     const emblem = getThemeEmblemAttachment('core');
     const banner = getThemeBannerAttachment('core');
     const local = getLocalVisualAttachment('core_profile');
+    const economyLocal = getLocalVisualAttachment('economy_vault');
 
     console.log(
-      `[visuals] core emblem=${Boolean(emblem)} banner=${Boolean(banner)} local=${Boolean(local)}`
+      `[visuals] core emblem=${Boolean(emblem)} banner=${Boolean(banner)} local=${Boolean(local)} economyLocal=${Boolean(economyLocal)}`
     );
   } catch (error) {
     console.error('[visuals] self-test failed:', error);
@@ -696,14 +697,20 @@ function runVisualSelfTest() {
 }
 
 function withLocalVisual(embed, key) {
-  const attachment = getLocalVisualAttachment(key);
+  const requestedAttachment = getLocalVisualAttachment(key);
+  const attachment = requestedAttachment || (key === 'economy_vault' ? getLocalVisualAttachment('core_profile') : null);
   if (!attachment) {
     console.warn(`[visuals] local visual missing for key "${key}"`);
     return { embed, files: [] };
   }
 
+  if (key === 'economy_vault' && !requestedAttachment) {
+    console.warn('[visuals] falling back from "economy_vault" to "core_profile"');
+  }
+
   const url = `attachment://${attachment.name}`;
   const thumbnailUrl = `attachment://${attachment.thumbnailName}`;
+  console.log(`[visuals] applying local visual key="${key}" image="${attachment.name}" thumbnail="${attachment.thumbnailName}" title="${embed.data?.title || ''}"`);
   embed.setImage(url);
   embed.setThumbnail(thumbnailUrl);
   return { embed, files: [attachment.file, attachment.thumbnailFile] };
@@ -2167,7 +2174,7 @@ client.on('messageCreate', async (message) => {
     if (!amountArg) {
       return message.reply(visualReplyOptions(
         infoEmbed(message, 'Deposit Usage', 'Enter an amount to deposit.\nExample: `!deposit 5000` or `!deposit all`'),
-        getEconomyVisualKey('Vault Deposit')
+        'core_profile'
       ));
     }
 
@@ -2175,14 +2182,14 @@ client.on('messageCreate', async (message) => {
     if (!Number.isInteger(amount) || amount <= 0) {
       return message.reply(visualReplyOptions(
         warningEmbed(message, 'Invalid Amount', 'Enter a valid deposit amount.'),
-        getEconomyVisualKey('Vault Deposit')
+        'core_profile'
       ));
     }
 
     if (amount > user.aura) {
       return message.reply(visualReplyOptions(
         warningEmbed(message, 'Not Enough Aura', "You don't have that much Aura in your wallet."),
-        getEconomyVisualKey('Vault Deposit')
+        'core_profile'
       ));
     }
 
@@ -2198,7 +2205,7 @@ client.on('messageCreate', async (message) => {
         field('Vault', user.vault),
         field('Base Interest', `${Math.round(VAULT_INTEREST_RATE * 100)}% every 24h`)
       );
-    return message.reply(visualReplyOptions(embed, getEconomyVisualKey(embed.data.title), { components: buildEconomyRows(user) }));
+    return message.reply(visualReplyOptions(embed, 'core_profile', { components: buildEconomyRows(user) }));
   }
 
   if (message.content === '!daily') {
@@ -2206,7 +2213,7 @@ client.on('messageCreate', async (message) => {
     if (cd) {
       return message.reply(visualReplyOptions(
         warningEmbed(message, 'Cooldown Active', `Wait ${cd}s before claiming \`!daily\` again.`),
-        getEconomyVisualKey('Daily Reward')
+        'core_profile'
       ));
     }
 
@@ -3339,7 +3346,7 @@ client.on('interactionCreate', async (interaction) => {
     if (user.aura <= 0) {
       return interaction.reply(visualReplyOptions(
         interactionNoticeEmbed('No Aura', 'You have no Aura in your wallet to deposit.', EMBED_COLORS.danger),
-        getEconomyVisualKey('Vault Deposit'),
+        'core_profile',
         { ephemeral: true }
       ));
     }
@@ -3353,7 +3360,7 @@ client.on('interactionCreate', async (interaction) => {
 
     return interaction.reply(visualReplyOptions(
       interactionNoticeEmbed('Vault Deposit', `Deposited ${amount} Aura into your vault.`, EMBED_COLORS.success),
-      getEconomyVisualKey('Vault Deposit'),
+      'core_profile',
       {
       components: buildEconomyRows(user),
       ephemeral: true
@@ -3366,7 +3373,7 @@ client.on('interactionCreate', async (interaction) => {
     if (cd) {
       return interaction.reply(visualReplyOptions(
         interactionNoticeEmbed('Cooldown Active', `Wait ${cd}s before claiming daily again.`, EMBED_COLORS.danger),
-        getEconomyVisualKey('Daily Reward'),
+        'core_profile',
         { ephemeral: true }
       ));
     }
@@ -4629,14 +4636,14 @@ client.on('interactionCreate', async (interaction) => {
     if (!Number.isInteger(amount) || amount <= 0) {
       return interaction.reply(visualReplyOptions(
         interactionNoticeEmbed('Invalid Amount', 'Enter a valid deposit amount.', EMBED_COLORS.danger),
-        getEconomyVisualKey('Vault Deposit'),
+        'core_profile',
         { ephemeral: true }
       ));
     }
     if (amount > user.aura) {
       return interaction.reply(visualReplyOptions(
         interactionNoticeEmbed('Not Enough Aura', "You don't have that much Aura in your wallet.", EMBED_COLORS.danger),
-        getEconomyVisualKey('Vault Deposit'),
+        'core_profile',
         { ephemeral: true }
       ));
     }
@@ -4649,7 +4656,7 @@ client.on('interactionCreate', async (interaction) => {
 
     return interaction.reply(visualReplyOptions(
       interactionNoticeEmbed('Vault Deposit', `Deposited ${amount} Aura into your vault.`, EMBED_COLORS.success),
-      getEconomyVisualKey('Vault Deposit'),
+      'core_profile',
       {
       components: buildEconomyRows(user),
       ephemeral: true
