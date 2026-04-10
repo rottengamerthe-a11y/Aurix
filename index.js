@@ -589,7 +589,8 @@ function getThemeEmblemAttachment(theme = 'default') {
   if (!fs.existsSync(emblemPath)) return null;
   try {
     const svg = fs.readFileSync(emblemPath, 'utf8');
-    const pngName = `theme-${theme}.png`;
+    const version = fs.statSync(emblemPath).mtimeMs.toString(36).replace('.', '');
+    const pngName = `theme-${theme}-${version}.png`;
     const resvg = new Resvg(svg, {
       fitTo: {
         mode: 'width',
@@ -613,7 +614,8 @@ function getThemeBannerAttachment(theme = 'default') {
   if (!fs.existsSync(bannerPath)) return null;
   try {
     const svg = fs.readFileSync(bannerPath, 'utf8');
-    const pngName = `banner-${theme}.png`;
+    const version = fs.statSync(bannerPath).mtimeMs.toString(36).replace('.', '');
+    const pngName = `banner-${theme}-${version}.png`;
     const resvg = new Resvg(svg, {
       fitTo: {
         mode: 'width',
