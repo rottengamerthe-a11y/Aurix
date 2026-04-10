@@ -448,7 +448,18 @@ const EMBED_COLORS = {
 };
 
 const VISUAL_ASSET_DIR = path.join(__dirname, 'assets', 'visuals');
+const GENERATED_VISUAL_DIR = path.join(__dirname, 'assets', 'generated');
 const renderedVisualCache = new Map();
+const STATIC_PUBLIC_VISUALS = {
+  core_profile: {
+    banner: 'core-profile-banner.png',
+    thumb: 'core-profile-thumb.png'
+  },
+  core_arcade: {
+    banner: 'core-arcade-banner.png',
+    thumb: 'core-arcade-thumb.png'
+  }
+};
 const LOCAL_VISUALS = {
   help_summary: 'help-summary.svg',
   help_core: 'help-core.svg',
@@ -741,8 +752,16 @@ async function runPublicVisualSelfTest() {
 
 function getPublicLocalVisualUrl(key, kind = 'banner') {
   if (!PUBLIC_BASE_URL) return null;
-  if (!LOCAL_VISUALS[key]) return null;
   const normalizedKind = kind === 'thumb' ? 'thumb' : 'banner';
+  const staticVisual = STATIC_PUBLIC_VISUALS[key];
+
+  if (staticVisual && staticVisual[normalizedKind]) {
+    const staticPath = path.join(GENERATED_VISUAL_DIR, staticVisual[normalizedKind]);
+    const version = fs.existsSync(staticPath) ? getVisualCacheVersion(staticPath) : '0';
+    return `${PUBLIC_BASE_URL}/generated/${encodeURIComponent(staticVisual[normalizedKind])}?v=${encodeURIComponent(version)}`;
+  }
+
+  if (!LOCAL_VISUALS[key]) return null;
   const version = getLocalVisualUrlVersion(key);
   return `${PUBLIC_BASE_URL}/visuals/local/${encodeURIComponent(key)}/${normalizedKind}.png?v=${encodeURIComponent(version)}`;
 }
@@ -4834,6 +4853,10 @@ client.on('interactionCreate', async (interaction) => {
 const app = express();
 app.get('/', (req, res) => res.send('Bot running'));
 app.get('/healthz', (req, res) => res.status(200).send('ok'));
+app.use('/generated', express.static(GENERATED_VISUAL_DIR, {
+  immutable: true,
+  maxAge: '365d'
+}));
 app.get('/visuals/local/:key/:kind.png', (req, res) => {
   const key = String(req.params.key || '');
   const kind = req.params.kind === 'thumb' ? 'thumb' : 'banner';
