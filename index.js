@@ -21,6 +21,8 @@ const DISCORD_TOKEN = getEnvValue('DISCORD_TOKEN', 'TOKEN', 'BOT_TOKEN');
 const MONGO_URI = getEnvValue('MONGO_URI', 'MONGODB_URI', 'DATABASE_URL');
 const PORT = Number(process.env.PORT) || 3000;
 const missingEnvVars = [];
+const BUILD_MARKER = 'visual-debug-2026-04-10-1';
+const DEPLOY_COMMIT = getEnvValue('RENDER_GIT_COMMIT', 'RENDER_GIT_BRANCH') || 'local';
 const configuredTokenVars = ['DISCORD_TOKEN', 'TOKEN', 'BOT_TOKEN']
   .map((key) => ({ key, value: getEnvValue(key) }))
   .filter((entry) => entry.value);
@@ -50,6 +52,8 @@ if (configuredMongoVars.length > 1) {
     console.warn(`Multiple Mongo env vars are set with different values: ${configuredMongoVars.map((entry) => entry.key).join(', ')}. Using MONGO_URI priority.`);
   }
 }
+
+console.log(`[boot] build=${BUILD_MARKER} deploy=${DEPLOY_COMMIT}`);
 
 process.on('unhandledRejection', (error) => {
   console.error('Unhandled promise rejection:', error);
