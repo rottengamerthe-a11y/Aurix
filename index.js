@@ -778,7 +778,7 @@ function withLocalVisual(embed, key) {
 
 function visualReplyOptions(embed, key, extras = {}) {
   const { files } = withLocalVisual(embed, key);
-  const payload = { embeds: [embed], ...extras };
+  const payload = { embeds: [embed], ...extras, __skipVisualDecorate: true };
 
   if (files.length > 0) {
     payload.files = files;
@@ -806,6 +806,10 @@ function normalizeReplyPayload(payload) {
 function decorateReplyPayload(payload) {
   const normalized = normalizeReplyPayload(payload);
   if (!normalized || typeof normalized === 'string' || Array.isArray(normalized)) return normalized;
+  if (normalized.__skipVisualDecorate) {
+    const { __skipVisualDecorate, ...rest } = normalized;
+    return rest;
+  }
   if (!Array.isArray(normalized.embeds) || normalized.embeds.length === 0) return normalized;
   if (Array.isArray(normalized.files) && normalized.files.length > 0) return normalized;
 
