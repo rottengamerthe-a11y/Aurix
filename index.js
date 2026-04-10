@@ -706,6 +706,26 @@ function runVisualSelfTest() {
   }
 }
 
+async function runPublicVisualSelfTest() {
+  if (!PUBLIC_BASE_URL || typeof fetch !== 'function') return;
+
+  const targets = [
+    `${PUBLIC_BASE_URL}/visuals/local/core_profile/banner.png`,
+    `${PUBLIC_BASE_URL}/visuals/local/core_profile/thumb.png`
+  ];
+
+  for (const target of targets) {
+    try {
+      const response = await fetch(target, { method: 'GET' });
+      console.log(
+        `[visuals] public self-test url=${target} status=${response.status} contentType=${response.headers.get('content-type') || 'unknown'}`
+      );
+    } catch (error) {
+      console.error(`[visuals] public self-test failed for ${target}:`, error);
+    }
+  }
+}
+
 function getPublicLocalVisualUrl(key, kind = 'banner') {
   if (!PUBLIC_BASE_URL) return null;
   if (!LOCAL_VISUALS[key]) return null;
@@ -4845,6 +4865,7 @@ client.once('clientReady', () => {
   clearTimeout(discordLoginWatchdog);
   console.log(`Logged in as ${client.user.tag}`);
   runVisualSelfTest();
+  runPublicVisualSelfTest();
 });
 
 client.on('error', (error) => {
