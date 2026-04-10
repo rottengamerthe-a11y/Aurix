@@ -39,6 +39,10 @@ process.on('uncaughtException', (error) => {
   console.error('Uncaught exception:', error);
 });
 
+process.on('warning', (warning) => {
+  console.warn('Process warning:', warning);
+});
+
 // ================= DATABASE =================
 mongoose.connect(MONGO_URI)
   .then(() => console.log('MongoDB Connected'))
@@ -4614,4 +4618,23 @@ client.once('clientReady', () => {
   runVisualSelfTest();
 });
 
-client.login(DISCORD_TOKEN);
+client.on('error', (error) => {
+  console.error('Discord client error:', error);
+});
+
+client.on('shardError', (error) => {
+  console.error('Discord shard error:', error);
+});
+
+client.on('shardDisconnect', (event, shardId) => {
+  console.warn(`Discord shard ${shardId} disconnected with code ${event?.code ?? 'unknown'}.`);
+});
+
+client.on('shardReconnecting', (shardId) => {
+  console.warn(`Discord shard ${shardId} reconnecting.`);
+});
+
+console.log('Starting Discord login...');
+client.login(DISCORD_TOKEN)
+  .then(() => console.log('Discord login promise resolved.'))
+  .catch((error) => console.error('Discord login failed:', error));
