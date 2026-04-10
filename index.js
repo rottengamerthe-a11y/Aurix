@@ -2257,7 +2257,7 @@ client.on('messageCreate', async (message) => {
     if (!amountArg) {
       return message.reply(visualReplyOptions(
         infoEmbed(message, 'Deposit Usage', 'Enter an amount to deposit.\nExample: `!deposit 5000` or `!deposit all`'),
-        'core_profile'
+        'core_arcade'
       ));
     }
 
@@ -2265,14 +2265,14 @@ client.on('messageCreate', async (message) => {
     if (!Number.isInteger(amount) || amount <= 0) {
       return message.reply(visualReplyOptions(
         warningEmbed(message, 'Invalid Amount', 'Enter a valid deposit amount.'),
-        'core_profile'
+        'core_arcade'
       ));
     }
 
     if (amount > user.aura) {
       return message.reply(visualReplyOptions(
         warningEmbed(message, 'Not Enough Aura', "You don't have that much Aura in your wallet."),
-        'core_profile'
+        'core_arcade'
       ));
     }
 
@@ -2288,7 +2288,7 @@ client.on('messageCreate', async (message) => {
         field('Vault', user.vault),
         field('Base Interest', `${Math.round(VAULT_INTEREST_RATE * 100)}% every 24h`)
       );
-    return message.reply(visualReplyOptions(embed, 'core_profile', { components: buildEconomyRows(user) }));
+    return message.reply(visualReplyOptions(embed, 'core_arcade', { components: buildEconomyRows(user) }));
   }
 
   if (message.content === '!daily') {
@@ -2296,7 +2296,7 @@ client.on('messageCreate', async (message) => {
     if (cd) {
       return message.reply(visualReplyOptions(
         warningEmbed(message, 'Cooldown Active', `Wait ${cd}s before claiming \`!daily\` again.`),
-        'core_profile'
+        'core_arcade'
       ));
     }
 
@@ -3429,7 +3429,7 @@ client.on('interactionCreate', async (interaction) => {
     if (user.aura <= 0) {
       return interaction.reply(visualReplyOptions(
         interactionNoticeEmbed('No Aura', 'You have no Aura in your wallet to deposit.', EMBED_COLORS.danger),
-        'core_profile',
+        'core_arcade',
         { ephemeral: true }
       ));
     }
@@ -3443,7 +3443,7 @@ client.on('interactionCreate', async (interaction) => {
 
     return interaction.reply(visualReplyOptions(
       interactionNoticeEmbed('Vault Deposit', `Deposited ${amount} Aura into your vault.`, EMBED_COLORS.success),
-      'core_profile',
+      'core_arcade',
       {
       components: buildEconomyRows(user),
       ephemeral: true
@@ -3456,7 +3456,7 @@ client.on('interactionCreate', async (interaction) => {
     if (cd) {
       return interaction.reply(visualReplyOptions(
         interactionNoticeEmbed('Cooldown Active', `Wait ${cd}s before claiming daily again.`, EMBED_COLORS.danger),
-        'core_profile',
+        'core_arcade',
         { ephemeral: true }
       ));
     }
@@ -4719,14 +4719,14 @@ client.on('interactionCreate', async (interaction) => {
     if (!Number.isInteger(amount) || amount <= 0) {
       return interaction.reply(visualReplyOptions(
         interactionNoticeEmbed('Invalid Amount', 'Enter a valid deposit amount.', EMBED_COLORS.danger),
-        'core_profile',
+        'core_arcade',
         { ephemeral: true }
       ));
     }
     if (amount > user.aura) {
       return interaction.reply(visualReplyOptions(
         interactionNoticeEmbed('Not Enough Aura', "You don't have that much Aura in your wallet.", EMBED_COLORS.danger),
-        'core_profile',
+        'core_arcade',
         { ephemeral: true }
       ));
     }
@@ -4739,7 +4739,7 @@ client.on('interactionCreate', async (interaction) => {
 
     return interaction.reply(visualReplyOptions(
       interactionNoticeEmbed('Vault Deposit', `Deposited ${amount} Aura into your vault.`, EMBED_COLORS.success),
-      'core_profile',
+      'core_arcade',
       {
       components: buildEconomyRows(user),
       ephemeral: true
