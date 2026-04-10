@@ -43,6 +43,19 @@ process.on('warning', (warning) => {
   console.warn('Process warning:', warning);
 });
 
+const DISCORD_LOGIN_TIMEOUT_MS = 30000;
+let discordReady = false;
+let discordLoginWatchdog = null;
+
+function scheduleDiscordLoginWatchdog() {
+  clearTimeout(discordLoginWatchdog);
+  discordLoginWatchdog = setTimeout(() => {
+    if (discordReady) return;
+    console.error(`Discord login timed out after ${DISCORD_LOGIN_TIMEOUT_MS}ms. Exiting so the host can restart the bot.`);
+    process.exit(1);
+  }, DISCORD_LOGIN_TIMEOUT_MS);
+}
+
 // ================= DATABASE =================
 mongoose.connect(MONGO_URI)
   .then(() => console.log('MongoDB Connected'))
@@ -404,6 +417,7 @@ const LOCAL_VISUALS = {
   help_core: 'help-core.svg',
   core_arcade: 'core-arcade.svg',
   core_profile: 'core-profile.svg',
+  economy_vault: 'economy-vault.svg',
   help_skills: 'help-skills.svg',
   help_clans: 'help-clans.svg',
   help_bosses: 'help-bosses.svg',
@@ -424,6 +438,7 @@ const LOCAL_VISUAL_THUMBNAILS = {
   help_core: 'emblem-help.svg',
   core_arcade: 'emblem-core-arcade.svg',
   core_profile: 'emblem-core-profile.svg',
+  economy_vault: 'emblem-economy-vault.svg',
   help_skills: 'emblem-help.svg',
   help_clans: 'emblem-clan.svg',
   help_bosses: 'emblem-boss.svg',
@@ -780,6 +795,23 @@ function getCoreVisualKey(title = '') {
   const normalized = title.toLowerCase();
 
   if (normalized.includes('spin') || normalized.includes('coinflip')) return 'core_arcade';
+  return 'core_profile';
+}
+
+function getEconomyVisualKey(title = '') {
+  const normalized = title.toLowerCase();
+
+  if (
+    normalized.includes('deposit') ||
+    normalized.includes('daily') ||
+    normalized.includes('vault') ||
+    normalized.includes('shop') ||
+    normalized.includes('purchase') ||
+    normalized.includes('boost')
+  ) {
+    return 'economy_vault';
+  }
+
   return 'core_profile';
 }
 
@@ -2060,7 +2092,7 @@ client.on('messageCreate', async (message) => {
         field('Vault', user.vault),
         field('Base Interest', `${Math.round(VAULT_INTEREST_RATE * 100)}% every 24h`)
       );
-    return message.reply(visualReplyOptions(embed, 'core_profile', { components: buildEconomyRows(user) }));
+    return message.reply(visualReplyOptions(embed, getEconomyVisualKey(embed.data.title), { components: buildEconomyRows(user) }));
   }
 
   if (message.content === '!daily') {
@@ -2082,7 +2114,7 @@ client.on('messageCreate', async (message) => {
         field('Clan XP', `+${clanXpResult.gained || 0}`),
         field('Progress', `${levelProgress(user)}${user.clan ? `\n${clanLevelProgress(user)}` : ''}`, false)
       );
-    return message.reply(visualReplyOptions(embed, 'core_profile', { components: buildEconomyRows(user) }));
+    return message.reply(visualReplyOptions(embed, getEconomyVisualKey(embed.data.title), { components: buildEconomyRows(user) }));
   }
 
   if (message.content === '!vaultinterest') {
@@ -2096,7 +2128,7 @@ client.on('messageCreate', async (message) => {
         field('Rate', `${effectiveRate}% every 24h`),
         field('Next Payout', formatDuration(nextIn))
       );
-    return message.reply(visualReplyOptions(embed, 'core_profile', { components: buildEconomyRows(user) }));
+    return message.reply(visualReplyOptions(embed, getEconomyVisualKey(embed.data.title), { components: buildEconomyRows(user) }));
   }
 
   if (message.content === '!shop') {
@@ -2108,7 +2140,7 @@ client.on('messageCreate', async (message) => {
         )
       );
 
-    return message.reply(visualReplyOptions(embed, 'core_profile', { components: [buildShopRow()] }));
+    return message.reply(visualReplyOptions(embed, getEconomyVisualKey(embed.data.title), { components: [buildShopRow()] }));
   }
 
   if (message.content.startsWith('!buy')) {
@@ -2162,7 +2194,7 @@ client.on('messageCreate', async (message) => {
         field('Effect', `${shopItem.multiplier}x ${BOOST_LABELS[shopItem.boostKey]}`),
         field('Duration', formatDuration(shopItem.durationMs))
       );
-    return message.reply(visualReplyOptions(embed, 'core_profile'));
+    return message.reply(visualReplyOptions(embed, getEconomyVisualKey(embed.data.title)));
   }
 
   if (message.content === '!open') {
@@ -3113,12 +3145,11 @@ client.on('interactionCreate', async (interaction) => {
     updateRank(user);
     await user.save();
 
-    return interaction.reply({
-      embeds: [
-        interactionNoticeEmbed('Purchase Complete', `Bought **${shopItem.emoji} ${shopItem.name}** for ${shopItem.price} Aura.`, EMBED_COLORS.success)
-      ],
-      ephemeral: true
-    });
+    return interaction.reply(visualReplyOptions(
+      interactionNoticeEmbed('Purchase Complete', `Bought **${shopItem.emoji} ${shopItem.name}** for ${shopItem.price} Aura.`, EMBED_COLORS.success),
+      getEconomyVisualKey('Purchase Complete'),
+      { ephemeral: true }
+    ));
   }
 
   if (interaction.customId.startsWith('item_use:')) {
@@ -3141,12 +3172,11 @@ client.on('interactionCreate', async (interaction) => {
     activateBoost(user, shopItem.boostKey, shopItem.multiplier, shopItem.durationMs);
     await user.save();
 
-    return interaction.reply({
-      embeds: [
-        interactionNoticeEmbed('Boost Activated', `${shopItem.emoji} ${shopItem.name} is now active for ${formatDuration(shopItem.durationMs)}.`, EMBED_COLORS.success)
-      ],
-      ephemeral: true
-    });
+    return interaction.reply(visualReplyOptions(
+      interactionNoticeEmbed('Boost Activated', `${shopItem.emoji} ${shopItem.name} is now active for ${formatDuration(shopItem.durationMs)}.`, EMBED_COLORS.success),
+      getEconomyVisualKey('Boost Activated'),
+      { ephemeral: true }
+    ));
   }
 
   if (interaction.customId === 'item_open_crate') {
@@ -3191,7 +3221,7 @@ client.on('interactionCreate', async (interaction) => {
       )
       .setTimestamp();
 
-    return interaction.reply(visualReplyOptions(embed, 'core_profile', { components: buildEconomyRows(user), ephemeral: true }));
+    return interaction.reply(visualReplyOptions(embed, getEconomyVisualKey(embed.data.title), { components: buildEconomyRows(user), ephemeral: true }));
   }
 
   if (interaction.customId === 'econ_deposit_all') {
@@ -3208,7 +3238,7 @@ client.on('interactionCreate', async (interaction) => {
 
     return interaction.reply(visualReplyOptions(
       interactionNoticeEmbed('Vault Deposit', `Deposited ${amount} Aura into your vault.`, EMBED_COLORS.success),
-      'core_profile',
+      getEconomyVisualKey('Vault Deposit'),
       {
       components: buildEconomyRows(user),
       ephemeral: true
@@ -3241,7 +3271,7 @@ client.on('interactionCreate', async (interaction) => {
           field('Progress', `${levelProgress(user)}${user.clan ? `\n${clanLevelProgress(user)}` : ''}`, false)
         )
         .setTimestamp(),
-      'core_profile',
+      getEconomyVisualKey('Daily Reward'),
       {
       components: buildEconomyRows(user),
       ephemeral: true
@@ -3253,22 +3283,23 @@ client.on('interactionCreate', async (interaction) => {
     const nextIn = Math.max(VAULT_INTEREST_INTERVAL - (Date.now() - user.lastVaultInterest), 0);
     const effectiveRate = ((VAULT_INTEREST_RATE + getRankPerks(user).vaultBonus + getClanPerks(user).vaultBonus) * 100).toFixed(2);
 
-    return interaction.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(EMBED_COLORS.success)
-          .setTitle('Vault Interest')
-          .setDescription('Your vault grows passively over time.')
-          .addFields(
-            field('Vault', user.vault),
-            field('Rate', `${effectiveRate}% every 24h`),
-            field('Next Payout', formatDuration(nextIn))
-          )
-          .setTimestamp()
-      ],
+    return interaction.reply(visualReplyOptions(
+      new EmbedBuilder()
+        .setColor(EMBED_COLORS.success)
+        .setTitle('Vault Interest')
+        .setDescription('Your vault grows passively over time.')
+        .addFields(
+          field('Vault', user.vault),
+          field('Rate', `${effectiveRate}% every 24h`),
+          field('Next Payout', formatDuration(nextIn))
+        )
+        .setTimestamp(),
+      getEconomyVisualKey('Vault Interest'),
+      {
       components: buildEconomyRows(user),
       ephemeral: true
-    });
+      }
+    ));
   }
 
   if (interaction.customId === 'econ_coinflip_modal') {
@@ -4485,13 +4516,14 @@ client.on('interactionCreate', async (interaction) => {
     updateRank(user);
     await user.save();
 
-    return interaction.reply({
-      embeds: [
-        interactionNoticeEmbed('Vault Deposit', `Deposited ${amount} Aura into your vault.`, EMBED_COLORS.success)
-      ],
+    return interaction.reply(visualReplyOptions(
+      interactionNoticeEmbed('Vault Deposit', `Deposited ${amount} Aura into your vault.`, EMBED_COLORS.success),
+      getEconomyVisualKey('Vault Deposit'),
+      {
       components: buildEconomyRows(user),
       ephemeral: true
-    });
+      }
+    ));
   }
 
   if (interaction.customId === 'modal_clan_create') {
@@ -4614,6 +4646,8 @@ client.on('guildCreate', async (guild) => {
 });
 
 client.once('clientReady', () => {
+  discordReady = true;
+  clearTimeout(discordLoginWatchdog);
   console.log(`Logged in as ${client.user.tag}`);
   runVisualSelfTest();
 });
@@ -4624,17 +4658,26 @@ client.on('error', (error) => {
 
 client.on('shardError', (error) => {
   console.error('Discord shard error:', error);
+  discordReady = false;
 });
 
 client.on('shardDisconnect', (event, shardId) => {
   console.warn(`Discord shard ${shardId} disconnected with code ${event?.code ?? 'unknown'}.`);
+  discordReady = false;
 });
 
 client.on('shardReconnecting', (shardId) => {
   console.warn(`Discord shard ${shardId} reconnecting.`);
+  discordReady = false;
+  scheduleDiscordLoginWatchdog();
 });
 
 console.log('Starting Discord login...');
+scheduleDiscordLoginWatchdog();
 client.login(DISCORD_TOKEN)
   .then(() => console.log('Discord login promise resolved.'))
-  .catch((error) => console.error('Discord login failed:', error));
+  .catch((error) => {
+    clearTimeout(discordLoginWatchdog);
+    console.error('Discord login failed:', error);
+    process.exit(1);
+  });

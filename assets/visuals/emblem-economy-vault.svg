@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0b1220"/>
+      <stop offset="100%" stop-color="#1b5a41"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="256" height="256" rx="54" fill="url(#bg)"/>
+  <rect x="54" y="58" width="148" height="114" rx="24" fill="#10263b" stroke="#86efac" stroke-width="7" filter="url(#glow)"/>
+  <circle cx="98" cy="104" r="20" fill="#facc15" filter="url(#glow)"/>
+  <path d="M98 90v28" stroke="#14532d" stroke-width="7" stroke-linecap="round"/>
+  <path d="M84 104h28" stroke="#14532d" stroke-width="7" stroke-linecap="round"/>
+  <path d="M132 94h42" stroke="#d9f99d" stroke-width="6" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M132 126h32" stroke="#86efac" stroke-width="6" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M64 206l26-28 22 16 28-40 20 24 32-40" fill="none" stroke="#a7f3d0" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+</svg>
